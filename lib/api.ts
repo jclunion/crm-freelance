@@ -1,0 +1,380 @@
+// Fonctions utilitaires pour les appels API
+
+const API_BASE = '/api';
+
+interface ErreurAPI {
+  erreur: string;
+  details?: unknown;
+}
+
+async function gererReponse<T>(reponse: Response): Promise<T> {
+  if (!reponse.ok) {
+    const erreur: ErreurAPI = await reponse.json().catch(() => ({
+      erreur: 'Erreur inconnue',
+    }));
+    throw new Error(erreur.erreur || `Erreur ${reponse.status}`);
+  }
+  return reponse.json();
+}
+
+// --- Clients ---
+
+export interface ClientAvecStats {
+  id: string;
+  nom: string;
+  typeClient: string;
+  emailPrincipal: string | null;
+  telephonePrincipal: string | null;
+  statutClient: string;
+  noteInterne: string | null;
+  proprietaireId: string;
+  dateCreation: string;
+  dateMiseAJour: string;
+  _count: {
+    contacts: number;
+    opportunites: number;
+    tickets: number;
+  };
+}
+
+export interface ClientComplet extends Omit<ClientAvecStats, '_count'> {
+  contacts: Contact[];
+  opportunites: Opportunite[];
+  tickets: Ticket[];
+  evenements: EvenementTimeline[];
+  proprietaire: {
+    id: string;
+    nomAffiche: string;
+    email: string;
+  };
+}
+
+export interface ClientCreation {
+  nom: string;
+  typeClient: 'freelance' | 'agence' | 'entreprise' | 'particulier';
+  emailPrincipal?: string;
+  telephonePrincipal?: string;
+  statutClient?: 'prospect' | 'client';
+  noteInterne?: string;
+}
+
+export async function recupererClients(params?: {
+  recherche?: string;
+  statutClient?: string;
+  typeClient?: string;
+}): Promise<ClientAvecStats[]> {
+  const searchParams = new URLSearchParams();
+  if (params?.recherche) searchParams.set('recherche', params.recherche);
+  if (params?.statutClient) searchParams.set('statutClient', params.statutClient);
+  if (params?.typeClient) searchParams.set('typeClient', params.typeClient);
+
+  const url = `${API_BASE}/clients${searchParams.toString() ? `?${searchParams}` : ''}`;
+  const reponse = await fetch(url);
+  return gererReponse<ClientAvecStats[]>(reponse);
+}
+
+export async function recupererClient(id: string): Promise<ClientComplet> {
+  const reponse = await fetch(`${API_BASE}/clients/${id}`);
+  return gererReponse<ClientComplet>(reponse);
+}
+
+export async function creerClient(donnees: ClientCreation): Promise<ClientAvecStats> {
+  const reponse = await fetch(`${API_BASE}/clients`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(donnees),
+  });
+  return gererReponse<ClientAvecStats>(reponse);
+}
+
+export async function mettreAJourClient(
+  id: string,
+  donnees: Partial<ClientCreation>
+): Promise<ClientAvecStats> {
+  const reponse = await fetch(`${API_BASE}/clients/${id}`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(donnees),
+  });
+  return gererReponse<ClientAvecStats>(reponse);
+}
+
+export async function supprimerClient(id: string): Promise<void> {
+  const reponse = await fetch(`${API_BASE}/clients/${id}`, {
+    method: 'DELETE',
+  });
+  await gererReponse<{ message: string }>(reponse);
+}
+
+// --- Contacts ---
+
+export interface Contact {
+  id: string;
+  clientId: string;
+  prenom: string;
+  nom: string;
+  email: string;
+  telephone: string | null;
+  role: string | null;
+  client?: {
+    id: string;
+    nom: string;
+  };
+}
+
+export interface ContactCreation {
+  clientId: string;
+  prenom: string;
+  nom: string;
+  email: string;
+  telephone?: string;
+  role?: string;
+}
+
+export async function recupererContacts(clientId?: string): Promise<Contact[]> {
+  const url = clientId
+    ? `${API_BASE}/contacts?clientId=${clientId}`
+    : `${API_BASE}/contacts`;
+  const reponse = await fetch(url);
+  return gererReponse<Contact[]>(reponse);
+}
+
+export async function creerContact(donnees: ContactCreation): Promise<Contact> {
+  const reponse = await fetch(`${API_BASE}/contacts`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(donnees),
+  });
+  return gererReponse<Contact>(reponse);
+}
+
+export async function mettreAJourContact(
+  id: string,
+  donnees: Partial<Omit<ContactCreation, 'clientId'>>
+): Promise<Contact> {
+  const reponse = await fetch(`${API_BASE}/contacts/${id}`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(donnees),
+  });
+  return gererReponse<Contact>(reponse);
+}
+
+export async function supprimerContact(id: string): Promise<void> {
+  const reponse = await fetch(`${API_BASE}/contacts/${id}`, {
+    method: 'DELETE',
+  });
+  await gererReponse<{ message: string }>(reponse);
+}
+
+// --- Opportunités ---
+
+export interface Opportunite {
+  id: string;
+  clientId: string;
+  titre: string;
+  descriptionCourte: string | null;
+  montantEstime: number | null;
+  devise: string;
+  probabilite: number | null;
+  dateCloturePrevue: string | null;
+  etapePipeline: string;
+  raisonPerdu: string | null;
+  proprietaireId: string;
+  dateCreation: string;
+  dateMiseAJour: string;
+  client?: {
+    id: string;
+    nom: string;
+  };
+  proprietaire?: {
+    id: string;
+    nomAffiche: string;
+  };
+}
+
+export interface OpportuniteCreation {
+  clientId: string;
+  titre: string;
+  descriptionCourte?: string;
+  montantEstime?: number;
+  devise?: string;
+  probabilite?: number;
+  dateCloturePrevue?: string;
+  etapePipeline?: string;
+}
+
+export async function recupererOpportunites(params?: {
+  clientId?: string;
+  etapePipeline?: string;
+}): Promise<Opportunite[]> {
+  const searchParams = new URLSearchParams();
+  if (params?.clientId) searchParams.set('clientId', params.clientId);
+  if (params?.etapePipeline) searchParams.set('etapePipeline', params.etapePipeline);
+
+  const url = `${API_BASE}/opportunites${searchParams.toString() ? `?${searchParams}` : ''}`;
+  const reponse = await fetch(url);
+  return gererReponse<Opportunite[]>(reponse);
+}
+
+export async function recupererOpportunite(id: string): Promise<Opportunite> {
+  const reponse = await fetch(`${API_BASE}/opportunites/${id}`);
+  return gererReponse<Opportunite>(reponse);
+}
+
+export async function creerOpportunite(donnees: OpportuniteCreation): Promise<Opportunite> {
+  const reponse = await fetch(`${API_BASE}/opportunites`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(donnees),
+  });
+  return gererReponse<Opportunite>(reponse);
+}
+
+export async function mettreAJourOpportunite(
+  id: string,
+  donnees: Partial<Omit<OpportuniteCreation, 'clientId'>>
+): Promise<Opportunite> {
+  const reponse = await fetch(`${API_BASE}/opportunites/${id}`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(donnees),
+  });
+  return gererReponse<Opportunite>(reponse);
+}
+
+export async function supprimerOpportunite(id: string): Promise<void> {
+  const reponse = await fetch(`${API_BASE}/opportunites/${id}`, {
+    method: 'DELETE',
+  });
+  await gererReponse<{ message: string }>(reponse);
+}
+
+// --- Tickets ---
+
+export interface Ticket {
+  id: string;
+  clientId: string;
+  sujet: string;
+  description: string;
+  typeTicket: string;
+  priorite: string;
+  statutTicket: string;
+  assigneId: string | null;
+  dateCreation: string;
+  dateMiseAJour: string;
+  dateResolution: string | null;
+  client?: {
+    id: string;
+    nom: string;
+  };
+  assigne?: {
+    id: string;
+    nomAffiche: string;
+  } | null;
+}
+
+export interface TicketCreation {
+  clientId: string;
+  sujet: string;
+  description: string;
+  typeTicket: 'bug' | 'question' | 'demande_evolution';
+  priorite?: 'basse' | 'normale' | 'haute';
+}
+
+export async function recupererTickets(params?: {
+  clientId?: string;
+  statutTicket?: string;
+  priorite?: string;
+  recherche?: string;
+}): Promise<Ticket[]> {
+  const searchParams = new URLSearchParams();
+  if (params?.clientId) searchParams.set('clientId', params.clientId);
+  if (params?.statutTicket) searchParams.set('statutTicket', params.statutTicket);
+  if (params?.priorite) searchParams.set('priorite', params.priorite);
+  if (params?.recherche) searchParams.set('recherche', params.recherche);
+
+  const url = `${API_BASE}/tickets${searchParams.toString() ? `?${searchParams}` : ''}`;
+  const reponse = await fetch(url);
+  return gererReponse<Ticket[]>(reponse);
+}
+
+export async function recupererTicket(id: string): Promise<Ticket> {
+  const reponse = await fetch(`${API_BASE}/tickets/${id}`);
+  return gererReponse<Ticket>(reponse);
+}
+
+export async function creerTicket(donnees: TicketCreation): Promise<Ticket> {
+  const reponse = await fetch(`${API_BASE}/tickets`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(donnees),
+  });
+  return gererReponse<Ticket>(reponse);
+}
+
+export async function mettreAJourTicket(
+  id: string,
+  donnees: Partial<Omit<TicketCreation, 'clientId'>> & { statutTicket?: string; assigneId?: string | null }
+): Promise<Ticket> {
+  const reponse = await fetch(`${API_BASE}/tickets/${id}`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(donnees),
+  });
+  return gererReponse<Ticket>(reponse);
+}
+
+export async function supprimerTicket(id: string): Promise<void> {
+  const reponse = await fetch(`${API_BASE}/tickets/${id}`, {
+    method: 'DELETE',
+  });
+  await gererReponse<{ message: string }>(reponse);
+}
+
+// --- Timeline ---
+
+export interface EvenementTimeline {
+  id: string;
+  clientId: string;
+  typeEvenement: string;
+  referenceId: string | null;
+  descriptionTexte: string;
+  dateEvenement: string;
+  auteurId: string | null;
+}
+
+// --- Dashboard ---
+
+export interface DashboardStats {
+  totalClients: number;
+  clientsProspects: number;
+  clientsActifs: number;
+  totalOpportunites: number;
+  opportunitesEnCours: number;
+  ticketsOuverts: number;
+  ticketsResolus: number;
+  caEstime: number;
+  caPondere: number;
+  caGagne: number;
+}
+
+export interface RepartitionPipeline {
+  etape: string;
+  label: string;
+  count: number;
+  montant: number;
+}
+
+export interface DashboardData {
+  stats: DashboardStats;
+  repartitionPipeline: RepartitionPipeline[];
+  dernieresOpportunites: Opportunite[];
+  derniersTickets: Ticket[];
+  derniersClients: ClientAvecStats[];
+}
+
+export async function recupererDashboard(): Promise<DashboardData> {
+  const reponse = await fetch(`${API_BASE}/dashboard`);
+  return gererReponse<DashboardData>(reponse);
+}

@@ -1,0 +1,179 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ============================================
+// Modèles NextAuth
+// ============================================
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+  @@map("accounts")
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("sessions")
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+  @@map("verification_tokens")
+}
+
+// ============================================
+// Utilisateur (étendu pour NextAuth)
+// ============================================
+
+model User {
+  id              String    @id @default(cuid())
+  email           String    @unique
+  emailVerified   DateTime?
+  motDePasse      String?   // Hash bcrypt pour credentials
+  nomAffiche      String?
+  image           String?
+  role            String    @default("freelance_solo") // freelance_solo, membre_agence, admin
+  fuseauHoraire   String    @default("Europe/Paris")
+  langueInterface String    @default("fr")
+
+  accounts        Account[]
+  sessions        Session[]
+  clients         Client[]
+  opportunites    Opportunite[]
+  ticketsAssignes Ticket[]       @relation("TicketAssigne")
+
+  dateCreation    DateTime @default(now())
+  dateMiseAJour   DateTime @updatedAt
+
+  @@map("users")
+}
+
+// Client (organisation ou personne)
+model Client {
+  id                 String   @id @default(cuid())
+  nom                String
+  typeClient         String   // freelance, agence, entreprise, particulier
+  emailPrincipal     String?
+  telephonePrincipal String?
+  statutClient       String   @default("prospect") // prospect, client
+  noteInterne        String?
+
+  proprietaireId     String
+  proprietaire       User @relation(fields: [proprietaireId], references: [id])
+
+  contacts           Contact[]
+  opportunites       Opportunite[]
+  tickets            Ticket[]
+  evenements         EvenementTimeline[]
+
+  dateCreation       DateTime @default(now())
+  dateMiseAJour      DateTime @updatedAt
+
+  @@map("clients")
+}
+
+// Contact chez un client
+model Contact {
+  id        String  @id @default(cuid())
+  clientId  String
+  client    Client  @relation(fields: [clientId], references: [id], onDelete: Cascade)
+
+  prenom    String
+  nom       String
+  email     String
+  telephone String?
+  role      String?
+
+  @@map("contacts")
+}
+
+// Opportunité commerciale
+model Opportunite {
+  id                   String    @id @default(cuid())
+  clientId             String
+  client               Client    @relation(fields: [clientId], references: [id], onDelete: Cascade)
+
+  titre                String
+  descriptionCourte    String?
+  montantEstime        Float?
+  devise               String    @default("EUR")
+  probabilite          Int?      // 0-100
+  dateCloturePrevue    DateTime?
+  etapePipeline        String    @default("lead") // lead, qualifie, proposition_envoyee, negociation, gagne, perdu
+  raisonPerdu          String?
+
+  proprietaireId       String
+  proprietaire         User @relation(fields: [proprietaireId], references: [id])
+
+  dateCreation         DateTime @default(now())
+  dateMiseAJour        DateTime @updatedAt
+
+  @@map("opportunites")
+}
+
+// Ticket de support
+model Ticket {
+  id             String    @id @default(cuid())
+  clientId       String
+  client         Client    @relation(fields: [clientId], references: [id], onDelete: Cascade)
+
+  sujet          String
+  description    String
+  typeTicket     String    // bug, question, demande_evolution
+  priorite       String    @default("normale") // basse, normale, haute
+  statutTicket   String    @default("nouveau") // nouveau, en_cours, resolu
+
+  assigneId      String?
+  assigne        User? @relation("TicketAssigne", fields: [assigneId], references: [id])
+
+  dateCreation   DateTime  @default(now())
+  dateMiseAJour  DateTime  @updatedAt
+  dateResolution DateTime?
+
+  @@map("tickets")
+}
+
+// Événement timeline (pour la vue 360° client)
+model EvenementTimeline {
+  id               String   @id @default(cuid())
+  clientId         String
+  client           Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
+
+  typeEvenement    String   // opportunite_creee, opportunite_etape_changee, ticket_cree, ticket_statut_change, note_client
+  referenceId      String?  // id de l'opportunité ou du ticket
+  descriptionTexte String
+
+  dateEvenement    DateTime @default(now())
+  auteurId         String?
+
+  @@map("evenements_timeline")
+}
