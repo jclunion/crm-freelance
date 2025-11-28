@@ -3,6 +3,7 @@ import './globals.css';
 import { Sidebar } from '@/components/layout/Sidebar';
 import { QueryProvider } from '@/components/providers/QueryProvider';
 import { SessionProvider } from '@/components/providers/SessionProvider';
+import { ThemeProvider } from '@/components/theme/ThemeProvider';
 
 export const metadata: Metadata = {
   title: 'CRM Freelance',
@@ -15,18 +16,20 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="fr">
+    <html lang="fr" suppressHydrationWarning>
       <body className="min-h-screen bg-[var(--background)]">
-        <SessionProvider>
-          <QueryProvider>
-            <div className="flex min-h-screen">
-              <Sidebar />
-              <main className="flex-1 overflow-auto">
-                {children}
-              </main>
-            </div>
-          </QueryProvider>
-        </SessionProvider>
+        <ThemeProvider>
+          <SessionProvider>
+            <QueryProvider>
+              <div className="flex min-h-screen">
+                <Sidebar />
+                <main className="flex-1 overflow-auto">
+                  {children}
+                </main>
+              </div>
+            </QueryProvider>
+          </SessionProvider>
+        </ThemeProvider>
       </body>
     </html>
   );

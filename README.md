@@ -195,6 +195,12 @@ EvenementTimeline ◄─────┘
 - ✅ Export des tickets filtrés
 - ✅ Format compatible Excel (UTF-8 BOM, séparateur ;)
 
+### Mode sombre
+- ✅ Thème clair / sombre / système
+- ✅ Persistance du choix (localStorage)
+- ✅ Détection automatique des préférences système
+- ✅ Toggle accessible dans la sidebar
+
 ## Prochaines fonctionnalités
 
 - ⬜ Notifications email

@@ -10,9 +10,9 @@ import {
   Ticket,
   Settings,
   LogOut,
-  User,
 } from 'lucide-react';
 import { cn, genererInitiales } from '@/lib/utils';
+import { ThemeToggle } from '@/components/theme/ThemeToggle';
 
 const navigationItems = [
   {
@@ -48,11 +48,12 @@ export function Sidebar() {
 
   return (
     <aside className="flex h-screen w-64 flex-col border-r border-[var(--border)] bg-[var(--background)]">
-      {/* Logo / Titre */}
-      <div className="flex h-16 items-center border-b border-[var(--border)] px-6">
+      {/* Logo / Titre + Theme Toggle */}
+      <div className="flex h-16 items-center justify-between border-b border-[var(--border)] px-6">
         <h1 className="text-xl font-bold text-[var(--primary)]">
           CRM Freelance
         </h1>
+        <ThemeToggle />
       </div>
 
       {/* Navigation principale */}
