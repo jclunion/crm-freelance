@@ -3,29 +3,72 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { ArrowLeft, Mail, Phone, Edit, Trash2, Plus, Loader2 } from 'lucide-react';
-import { PageHeader } from '@/components/layout/PageHeader';
+import {
+  ArrowLeft,
+  Mail,
+  Phone,
+  Edit,
+  Trash2,
+  Plus,
+  Loader2,
+  Target,
+  Ticket as TicketIcon,
+  Users,
+  Clock,
+  TrendingUp,
+  MoreHorizontal,
+  Building2,
+} from 'lucide-react';
 import { useClient, useSupprimerClient } from '@/lib/hooks';
-import { formaterDate } from '@/lib/utils';
+import { formaterDate, formaterMontant } from '@/lib/utils';
 import { ModaleNouveauContact } from '@/components/contacts/ModaleNouveauContact';
 import { ModaleNouvelleOpportunite } from '@/components/opportunites/ModaleNouvelleOpportunite';
+import { ModaleEditionOpportunite } from '@/components/opportunites/ModaleEditionOpportunite';
 import { ModaleNouveauTicket } from '@/components/tickets/ModaleNouveauTicket';
+import { ModaleEditionTicket } from '@/components/tickets/ModaleEditionTicket';
 import { ModaleEditionClient } from '@/components/clients/ModaleEditionClient';
+import type { Opportunite, Ticket } from '@/lib/api';
 
+// Badges pour les étapes du pipeline
 const badgeEtape: Record<string, string> = {
-  lead: 'bg-gray-100 text-gray-700',
-  qualifie: 'bg-blue-100 text-blue-700',
-  proposition_envoyee: 'bg-purple-100 text-purple-700',
-  negociation: 'bg-orange-100 text-orange-700',
-  gagne: 'bg-green-100 text-green-700',
-  perdu: 'bg-red-100 text-red-700',
+  lead: 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300',
+  qualifie: 'bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300',
+  proposition_envoyee: 'bg-purple-100 text-purple-700 dark:bg-purple-900 dark:text-purple-300',
+  negociation: 'bg-orange-100 text-orange-700 dark:bg-orange-900 dark:text-orange-300',
+  gagne: 'bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300',
+  perdu: 'bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-300',
 };
 
+// Badges pour les statuts de tickets
 const badgeStatutTicket: Record<string, string> = {
-  nouveau: 'bg-blue-100 text-blue-700',
-  en_cours: 'bg-yellow-100 text-yellow-700',
-  resolu: 'bg-green-100 text-green-700',
+  nouveau: 'bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300',
+  en_cours: 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900 dark:text-yellow-300',
+  resolu: 'bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300',
 };
+
+// Badges pour les priorités
+const badgePriorite: Record<string, string> = {
+  haute: 'bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-300',
+  normale: 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900 dark:text-yellow-300',
+  basse: 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300',
+};
+
+// Badges pour le type de client
+const badgeType: Record<string, string> = {
+  freelance: 'bg-purple-100 text-purple-700 dark:bg-purple-900 dark:text-purple-300',
+  agence: 'bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300',
+  entreprise: 'bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300',
+  particulier: 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300',
+};
+
+// Badges pour le statut client
+const badgeStatut: Record<string, string> = {
+  prospect: 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900 dark:text-yellow-300',
+  client: 'bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300',
+};
+
+// Onglets disponibles
+type Onglet = 'apercu' | 'opportunites' | 'tickets' | 'timeline';
 
 interface PageProps {
   params: { id: string };
@@ -36,20 +79,66 @@ export default function FicheClient({ params }: PageProps) {
   const { data: client, isLoading, error } = useClient(params.id);
   const supprimerMutation = useSupprimerClient();
 
+  const [ongletActif, setOngletActif] = useState<Onglet>('apercu');
+  const [menuActionsOuvert, setMenuActionsOuvert] = useState(false);
   const [modaleContactOuverte, setModaleContactOuverte] = useState(false);
   const [modaleOpportuniteOuverte, setModaleOpportuniteOuverte] = useState(false);
+  const [modaleEditionOpportuniteOuverte, setModaleEditionOpportuniteOuverte] = useState(false);
+  const [opportuniteSelectionnee, setOpportuniteSelectionnee] = useState<Opportunite | null>(null);
   const [modaleTicketOuverte, setModaleTicketOuverte] = useState(false);
+  const [modaleEditionTicketOuverte, setModaleEditionTicketOuverte] = useState(false);
+  const [ticketSelectionne, setTicketSelectionne] = useState<Ticket | null>(null);
   const [modaleEditionOuverte, setModaleEditionOuverte] = useState(false);
 
   const gererSuppression = async () => {
     if (!confirm('Êtes-vous sûr de vouloir supprimer ce client ?')) return;
-
     try {
       await supprimerMutation.mutateAsync(params.id);
       router.push('/clients');
     } catch (erreur) {
       console.error('Erreur suppression:', erreur);
     }
+  };
+
+  // Calculs des statistiques
+  const calculerStats = () => {
+    if (!client) return { caTotal: 0, opportunitesOuvertes: 0, ticketsOuverts: 0 };
+    
+    const opportunitesOuvertes = client.opportunites?.filter(
+      (o) => !['gagne', 'perdu'].includes(o.etapePipeline)
+    ).length || 0;
+    
+    const caTotal = client.opportunites?.reduce(
+      (sum, o) => sum + (o.montantEstime || 0), 0
+    ) || 0;
+    
+    const ticketsOuverts = client.tickets?.filter(
+      (t) => t.statutTicket !== 'resolu'
+    ).length || 0;
+
+    return { caTotal, opportunitesOuvertes, ticketsOuverts };
+  };
+
+  // Ouvrir la modale d'édition d'opportunité
+  const ouvrirEditionOpportunite = (opp: Opportunite) => {
+    setOpportuniteSelectionnee(opp);
+    setModaleEditionOpportuniteOuverte(true);
+  };
+
+  const fermerEditionOpportunite = () => {
+    setModaleEditionOpportuniteOuverte(false);
+    setOpportuniteSelectionnee(null);
+  };
+
+  // Ouvrir la modale d'édition de ticket
+  const ouvrirEditionTicket = (ticket: Ticket) => {
+    setTicketSelectionne(ticket);
+    setModaleEditionTicketOuverte(true);
+  };
+
+  const fermerEditionTicket = () => {
+    setModaleEditionTicketOuverte(false);
+    setTicketSelectionne(null);
   };
 
   // État de chargement
@@ -73,97 +162,234 @@ export default function FicheClient({ params }: PageProps) {
     );
   }
 
-  return (
-    <div className="flex flex-col">
-      <PageHeader titre={client.nom}>
-        <Link
-          href="/clients"
-          className="flex items-center gap-2 rounded-lg border border-[var(--border)] px-3 py-2 text-sm font-medium transition-colors hover:bg-[var(--border)]"
-        >
-          <ArrowLeft className="h-4 w-4" />
-          Retour
-        </Link>
-        <button
-          onClick={() => setModaleEditionOuverte(true)}
-          className="flex items-center gap-2 rounded-lg border border-[var(--border)] px-3 py-2 text-sm font-medium transition-colors hover:bg-[var(--border)]"
-        >
-          <Edit className="h-4 w-4" />
-          Modifier
-        </button>
-        <button
-          onClick={gererSuppression}
-          disabled={supprimerMutation.isPending}
-          className="flex items-center gap-2 rounded-lg border border-red-300 px-3 py-2 text-sm font-medium text-red-600 transition-colors hover:bg-red-50 disabled:opacity-50"
-        >
-          {supprimerMutation.isPending ? (
-            <Loader2 className="h-4 w-4 animate-spin" />
-          ) : (
-            <Trash2 className="h-4 w-4" />
-          )}
-          Supprimer
-        </button>
-      </PageHeader>
+  const stats = calculerStats();
 
-      <div className="grid gap-6 p-6 lg:grid-cols-3">
-        {/* Colonne gauche : Infos + listes */}
-        <div className="space-y-6 lg:col-span-2">
-          {/* Infos principales */}
-          <section className="rounded-lg border border-[var(--border)] p-6">
-            <h2 className="mb-4 text-lg font-semibold">Informations</h2>
-            <div className="grid gap-4 sm:grid-cols-2">
-              <div>
-                <p className="text-sm text-[var(--muted)]">Type</p>
-                <p className="font-medium capitalize">{client.typeClient}</p>
-              </div>
-              <div>
-                <p className="text-sm text-[var(--muted)]">Statut</p>
-                <p className="font-medium capitalize">{client.statutClient}</p>
-              </div>
-              <div className="flex items-center gap-2">
-                <Mail className="h-4 w-4 text-[var(--muted)]" />
-                <span>{client.emailPrincipal || '—'}</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <Phone className="h-4 w-4 text-[var(--muted)]" />
-                <span>{client.telephonePrincipal || '—'}</span>
+  const onglets = [
+    { id: 'apercu' as Onglet, label: 'Aperçu', icon: Building2 },
+    { id: 'opportunites' as Onglet, label: `Opportunités (${client.opportunites?.length || 0})`, icon: Target },
+    { id: 'tickets' as Onglet, label: `Tickets (${client.tickets?.length || 0})`, icon: TicketIcon },
+    { id: 'timeline' as Onglet, label: 'Timeline', icon: Clock },
+  ];
+
+  return (
+    <div className="flex h-full flex-col">
+      {/* ═══════════════════════════════════════════════════════════════════
+          HEADER - Toujours visible
+      ═══════════════════════════════════════════════════════════════════ */}
+      <header className="border-b border-[var(--border)] bg-[var(--background)]">
+        {/* Ligne 1 : Navigation + Actions */}
+        <div className="flex items-center justify-between px-6 py-4">
+          {/* Gauche : Retour + Nom */}
+          <div className="flex items-center gap-4">
+            <Link
+              href="/clients"
+              className="flex h-9 w-9 items-center justify-center rounded-lg border border-[var(--border)] transition-colors hover:bg-[var(--border)]"
+            >
+              <ArrowLeft className="h-4 w-4" />
+            </Link>
+            <div>
+              <h1 className="text-2xl font-bold">{client.nom}</h1>
+              <div className="mt-1 flex items-center gap-2">
+                <span className={`inline-flex rounded-full px-2.5 py-0.5 text-xs font-medium ${badgeType[client.typeClient] || ''}`}>
+                  {client.typeClient}
+                </span>
+                <span className={`inline-flex rounded-full px-2.5 py-0.5 text-xs font-medium ${badgeStatut[client.statutClient] || ''}`}>
+                  {client.statutClient}
+                </span>
               </div>
             </div>
-            {client.noteInterne && (
-              <div className="mt-4 rounded-lg bg-[var(--border)]/50 p-3">
-                <p className="text-sm text-[var(--muted)]">Note interne</p>
-                <p className="mt-1 text-sm">{client.noteInterne}</p>
-              </div>
-            )}
+          </div>
+
+          {/* Droite : Actions principales */}
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setModaleOpportuniteOuverte(true)}
+              className="flex items-center gap-2 rounded-lg bg-[var(--primary)] px-4 py-2 text-sm font-medium text-[var(--primary-foreground)] transition-opacity hover:opacity-90"
+            >
+              <Target className="h-4 w-4" />
+              Nouvelle opportunité
+            </button>
+            <button
+              onClick={() => setModaleTicketOuverte(true)}
+              className="flex items-center gap-2 rounded-lg border border-[var(--border)] px-4 py-2 text-sm font-medium transition-colors hover:bg-[var(--border)]"
+            >
+              <TicketIcon className="h-4 w-4" />
+              Nouveau ticket
+            </button>
+
+            {/* Menu actions secondaires */}
+            <div className="relative">
+              <button
+                onClick={() => setMenuActionsOuvert(!menuActionsOuvert)}
+                className="flex h-9 w-9 items-center justify-center rounded-lg border border-[var(--border)] transition-colors hover:bg-[var(--border)]"
+              >
+                <MoreHorizontal className="h-4 w-4" />
+              </button>
+              {menuActionsOuvert && (
+                <>
+                  <div
+                    className="fixed inset-0 z-40"
+                    onClick={() => setMenuActionsOuvert(false)}
+                  />
+                  <div className="absolute right-0 top-full z-50 mt-1 w-48 rounded-lg border border-[var(--border)] bg-[var(--background)] py-1 shadow-lg">
+                    <button
+                      onClick={() => {
+                        setModaleEditionOuverte(true);
+                        setMenuActionsOuvert(false);
+                      }}
+                      className="flex w-full items-center gap-2 px-4 py-2 text-sm hover:bg-[var(--border)]"
+                    >
+                      <Edit className="h-4 w-4" />
+                      Modifier le client
+                    </button>
+                    <button
+                      onClick={() => {
+                        setModaleContactOuverte(true);
+                        setMenuActionsOuvert(false);
+                      }}
+                      className="flex w-full items-center gap-2 px-4 py-2 text-sm hover:bg-[var(--border)]"
+                    >
+                      <Users className="h-4 w-4" />
+                      Ajouter un contact
+                    </button>
+                    <hr className="my-1 border-[var(--border)]" />
+                    <button
+                      onClick={() => {
+                        gererSuppression();
+                        setMenuActionsOuvert(false);
+                      }}
+                      disabled={supprimerMutation.isPending}
+                      className="flex w-full items-center gap-2 px-4 py-2 text-sm text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                      Supprimer
+                    </button>
+                  </div>
+                </>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* Ligne 2 : Chiffres clés */}
+        <div className="flex gap-6 border-t border-[var(--border)] px-6 py-3">
+          <div className="flex items-center gap-2">
+            <TrendingUp className="h-4 w-4 text-[var(--muted)]" />
+            <span className="text-sm text-[var(--muted)]">CA potentiel</span>
+            <span className="font-semibold">{formaterMontant(stats.caTotal)}</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <Target className="h-4 w-4 text-[var(--muted)]" />
+            <span className="text-sm text-[var(--muted)]">Opportunités ouvertes</span>
+            <span className="font-semibold">{stats.opportunitesOuvertes}</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <TicketIcon className="h-4 w-4 text-[var(--muted)]" />
+            <span className="text-sm text-[var(--muted)]">Tickets ouverts</span>
+            <span className="font-semibold">{stats.ticketsOuverts}</span>
+          </div>
+        </div>
+      </header>
+
+      {/* ═══════════════════════════════════════════════════════════════════
+          CONTENU PRINCIPAL - 2 colonnes
+      ═══════════════════════════════════════════════════════════════════ */}
+      <div className="flex flex-1 overflow-hidden">
+        {/* ─────────────────────────────────────────────────────────────────
+            COLONNE GAUCHE : Infos & Contacts (fixe, scrollable)
+        ───────────────────────────────────────────────────────────────── */}
+        <aside className="w-80 flex-shrink-0 overflow-y-auto border-r border-[var(--border)] bg-[var(--card)] p-6">
+          {/* Bloc Informations */}
+          <section className="mb-6">
+            <h3 className="mb-3 text-xs font-semibold uppercase tracking-wider text-[var(--muted)]">
+              Informations
+            </h3>
+            <div className="space-y-3">
+              {client.emailPrincipal && (
+                <a
+                  href={`mailto:${client.emailPrincipal}`}
+                  className="flex items-center gap-3 text-sm hover:text-[var(--primary)]"
+                >
+                  <Mail className="h-4 w-4 text-[var(--muted)]" />
+                  <span className="truncate">{client.emailPrincipal}</span>
+                </a>
+              )}
+              {client.telephonePrincipal && (
+                <a
+                  href={`tel:${client.telephonePrincipal}`}
+                  className="flex items-center gap-3 text-sm hover:text-[var(--primary)]"
+                >
+                  <Phone className="h-4 w-4 text-[var(--muted)]" />
+                  <span>{client.telephonePrincipal}</span>
+                </a>
+              )}
+              {!client.emailPrincipal && !client.telephonePrincipal && (
+                <p className="text-sm text-[var(--muted)]">Aucune information de contact</p>
+              )}
+            </div>
           </section>
 
-          {/* Contacts */}
-          <section className="rounded-lg border border-[var(--border)] p-6">
-            <div className="mb-4 flex items-center justify-between">
-              <h2 className="text-lg font-semibold">
+          {/* Bloc Note interne */}
+          {client.noteInterne && (
+            <section className="mb-6">
+              <h3 className="mb-3 text-xs font-semibold uppercase tracking-wider text-[var(--muted)]">
+                Note interne
+              </h3>
+              <p className="rounded-lg bg-[var(--background)] p-3 text-sm">
+                {client.noteInterne}
+              </p>
+            </section>
+          )}
+
+          {/* Bloc Contacts */}
+          <section>
+            <div className="mb-3 flex items-center justify-between">
+              <h3 className="text-xs font-semibold uppercase tracking-wider text-[var(--muted)]">
                 Contacts ({client.contacts?.length || 0})
-              </h2>
+              </h3>
               <button
                 onClick={() => setModaleContactOuverte(true)}
-                className="flex items-center gap-1 text-sm text-[var(--primary)] hover:underline"
+                className="flex items-center gap-1 text-xs text-[var(--primary)] hover:underline"
               >
-                <Plus className="h-4 w-4" />
+                <Plus className="h-3 w-3" />
                 Ajouter
               </button>
             </div>
-            <div className="space-y-3">
+            <div className="space-y-2">
               {client.contacts && client.contacts.length > 0 ? (
                 client.contacts.map((contact) => (
                   <div
                     key={contact.id}
-                    className="flex items-center justify-between rounded-lg bg-[var(--border)]/30 p-3"
+                    className="rounded-lg bg-[var(--background)] p-3"
                   >
-                    <div>
-                      <p className="font-medium">
-                        {contact.prenom} {contact.nom}
-                      </p>
-                      <p className="text-sm text-[var(--muted)]">{contact.role || '—'}</p>
+                    <div className="flex items-start justify-between">
+                      <div>
+                        <p className="font-medium">
+                          {contact.prenom} {contact.nom}
+                        </p>
+                        {contact.role && (
+                          <p className="text-xs text-[var(--muted)]">{contact.role}</p>
+                        )}
+                      </div>
                     </div>
-                    <p className="text-sm text-[var(--muted)]">{contact.email}</p>
+                    {contact.email && (
+                      <a
+                        href={`mailto:${contact.email}`}
+                        className="mt-2 flex items-center gap-2 text-xs text-[var(--muted)] hover:text-[var(--primary)]"
+                      >
+                        <Mail className="h-3 w-3" />
+                        {contact.email}
+                      </a>
+                    )}
+                    {contact.telephone && (
+                      <a
+                        href={`tel:${contact.telephone}`}
+                        className="mt-1 flex items-center gap-2 text-xs text-[var(--muted)] hover:text-[var(--primary)]"
+                      >
+                        <Phone className="h-3 w-3" />
+                        {contact.telephone}
+                      </a>
+                    )}
                   </div>
                 ))
               ) : (
@@ -173,121 +399,237 @@ export default function FicheClient({ params }: PageProps) {
               )}
             </div>
           </section>
+        </aside>
 
-          {/* Opportunités */}
-          <section className="rounded-lg border border-[var(--border)] p-6">
-            <div className="mb-4 flex items-center justify-between">
-              <h2 className="text-lg font-semibold">
-                Opportunités ({client.opportunites?.length || 0})
-              </h2>
+        {/* ─────────────────────────────────────────────────────────────────
+            COLONNE DROITE : Onglets + Contenu
+        ───────────────────────────────────────────────────────────────── */}
+        <main className="flex flex-1 flex-col overflow-hidden">
+          {/* Barre d'onglets */}
+          <nav className="flex gap-1 border-b border-[var(--border)] px-6">
+            {onglets.map((onglet) => (
               <button
-                onClick={() => setModaleOpportuniteOuverte(true)}
-                className="flex items-center gap-1 text-sm text-[var(--primary)] hover:underline"
+                key={onglet.id}
+                onClick={() => setOngletActif(onglet.id)}
+                className={`flex items-center gap-2 border-b-2 px-4 py-3 text-sm font-medium transition-colors ${
+                  ongletActif === onglet.id
+                    ? 'border-[var(--primary)] text-[var(--primary)]'
+                    : 'border-transparent text-[var(--muted)] hover:text-[var(--foreground)]'
+                }`}
               >
-                <Plus className="h-4 w-4" />
-                Nouvelle
+                <onglet.icon className="h-4 w-4" />
+                {onglet.label}
               </button>
-            </div>
-            <div className="space-y-3">
-              {client.opportunites && client.opportunites.length > 0 ? (
-                client.opportunites.map((opp) => (
-                  <div
-                    key={opp.id}
-                    className="flex items-center justify-between rounded-lg bg-[var(--border)]/30 p-3"
-                  >
-                    <div>
-                      <p className="font-medium">{opp.titre}</p>
-                      <span
-                        className={`mt-1 inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${
-                          badgeEtape[opp.etapePipeline] || ''
-                        }`}
-                      >
-                        {opp.etapePipeline.replace('_', ' ')}
-                      </span>
-                    </div>
-                    <p className="font-medium">
-                      {opp.montantEstime?.toLocaleString('fr-FR') || 0} €
-                    </p>
-                  </div>
-                ))
-              ) : (
-                <p className="py-4 text-center text-sm text-[var(--muted)]">
-                  Aucune opportunité
-                </p>
-              )}
-            </div>
-          </section>
+            ))}
+          </nav>
 
-          {/* Tickets */}
-          <section className="rounded-lg border border-[var(--border)] p-6">
-            <div className="mb-4 flex items-center justify-between">
-              <h2 className="text-lg font-semibold">
-                Tickets ({client.tickets?.length || 0})
-              </h2>
-              <button
-                onClick={() => setModaleTicketOuverte(true)}
-                className="flex items-center gap-1 text-sm text-[var(--primary)] hover:underline"
-              >
-                <Plus className="h-4 w-4" />
-                Nouveau
-              </button>
-            </div>
-            <div className="space-y-3">
-              {client.tickets && client.tickets.length > 0 ? (
-                client.tickets.map((ticket) => (
-                  <div
-                    key={ticket.id}
-                    className="flex items-center justify-between rounded-lg bg-[var(--border)]/30 p-3"
-                  >
-                    <div>
-                      <p className="font-medium">{ticket.sujet}</p>
-                      <span
-                        className={`mt-1 inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${
-                          badgeStatutTicket[ticket.statutTicket] || ''
-                        }`}
-                      >
-                        {ticket.statutTicket.replace('_', ' ')}
-                      </span>
-                    </div>
-                    <span className="text-sm capitalize text-[var(--muted)]">
-                      {ticket.priorite}
-                    </span>
+          {/* Contenu de l'onglet */}
+          <div className="flex-1 overflow-y-auto p-6">
+            {/* ═══ ONGLET APERÇU ═══ */}
+            {ongletActif === 'apercu' && (
+              <div className="grid gap-6 lg:grid-cols-2">
+                {/* Résumé Opportunités */}
+                <section className="rounded-lg border border-[var(--border)] p-5">
+                  <div className="mb-4 flex items-center justify-between">
+                    <h3 className="font-semibold">Opportunités récentes</h3>
+                    <button
+                      onClick={() => setOngletActif('opportunites')}
+                      className="text-sm text-[var(--primary)] hover:underline"
+                    >
+                      Voir tout
+                    </button>
                   </div>
-                ))
-              ) : (
-                <p className="py-4 text-center text-sm text-[var(--muted)]">
-                  Aucun ticket
-                </p>
-              )}
-            </div>
-          </section>
-        </div>
+                  <div className="space-y-3">
+                    {client.opportunites && client.opportunites.length > 0 ? (
+                      client.opportunites.slice(0, 3).map((opp) => (
+                        <button
+                          key={opp.id}
+                          onClick={() => ouvrirEditionOpportunite(opp as Opportunite)}
+                          className="flex w-full items-center justify-between rounded-lg bg-[var(--card)] p-3 text-left transition-colors hover:bg-[var(--card-hover)]"
+                        >
+                          <div>
+                            <p className="font-medium hover:text-[var(--primary)]">{opp.titre}</p>
+                            <span className={`mt-1 inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${badgeEtape[opp.etapePipeline] || ''}`}>
+                              {opp.etapePipeline.replace('_', ' ')}
+                            </span>
+                          </div>
+                          <p className="font-semibold text-[var(--primary)]">
+                            {formaterMontant(opp.montantEstime || 0)}
+                          </p>
+                        </button>
+                      ))
+                    ) : (
+                      <p className="py-6 text-center text-sm text-[var(--muted)]">
+                        Aucune opportunité
+                      </p>
+                    )}
+                  </div>
+                </section>
 
-        {/* Colonne droite : Timeline */}
-        <div className="lg:col-span-1">
-          <section className="rounded-lg border border-[var(--border)] p-6">
-            <h2 className="mb-4 text-lg font-semibold">Timeline</h2>
-            <div className="space-y-4">
-              {client.evenements && client.evenements.length > 0 ? (
-                client.evenements.map((evt) => (
-                  <div key={evt.id} className="border-l-2 border-[var(--border)] pl-4">
-                    <p className="text-xs text-[var(--muted)]">
-                      {formaterDate(evt.dateEvenement)}
-                    </p>
-                    <p className="mt-1 text-sm">{evt.descriptionTexte}</p>
+                {/* Résumé Tickets */}
+                <section className="rounded-lg border border-[var(--border)] p-5">
+                  <div className="mb-4 flex items-center justify-between">
+                    <h3 className="font-semibold">Tickets récents</h3>
+                    <button
+                      onClick={() => setOngletActif('tickets')}
+                      className="text-sm text-[var(--primary)] hover:underline"
+                    >
+                      Voir tout
+                    </button>
                   </div>
-                ))
-              ) : (
-                <p className="py-4 text-center text-sm text-[var(--muted)]">
-                  Aucun événement
-                </p>
-              )}
-            </div>
-          </section>
-        </div>
+                  <div className="space-y-3">
+                    {client.tickets && client.tickets.length > 0 ? (
+                      client.tickets.slice(0, 3).map((ticket) => (
+                        <button
+                          key={ticket.id}
+                          onClick={() => ouvrirEditionTicket(ticket as Ticket)}
+                          className="flex w-full items-center justify-between rounded-lg bg-[var(--card)] p-3 text-left transition-colors hover:bg-[var(--card-hover)]"
+                        >
+                          <div>
+                            <p className="font-medium hover:text-[var(--primary)]">{ticket.sujet}</p>
+                            <span className={`mt-1 inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${badgeStatutTicket[ticket.statutTicket] || ''}`}>
+                              {ticket.statutTicket.replace('_', ' ')}
+                            </span>
+                          </div>
+                          <span className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${badgePriorite[ticket.priorite] || ''}`}>
+                            {ticket.priorite}
+                          </span>
+                        </button>
+                      ))
+                    ) : (
+                      <p className="py-6 text-center text-sm text-[var(--muted)]">
+                        Aucun ticket
+                      </p>
+                    )}
+                  </div>
+                </section>
+              </div>
+            )}
+
+            {/* ═══ ONGLET OPPORTUNITÉS ═══ */}
+            {ongletActif === 'opportunites' && (
+              <div className="space-y-3">
+                {client.opportunites && client.opportunites.length > 0 ? (
+                  client.opportunites.map((opp) => (
+                    <button
+                      key={opp.id}
+                      onClick={() => ouvrirEditionOpportunite(opp as Opportunite)}
+                      className="flex w-full items-center justify-between rounded-lg border border-[var(--border)] p-4 text-left transition-colors hover:bg-[var(--card)]"
+                    >
+                      <div className="flex-1">
+                        <p className="font-medium hover:text-[var(--primary)]">{opp.titre}</p>
+                        <div className="mt-1 flex items-center gap-3">
+                          <span className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${badgeEtape[opp.etapePipeline] || ''}`}>
+                            {opp.etapePipeline.replace('_', ' ')}
+                          </span>
+                          {opp.probabilite && (
+                            <span className="text-xs text-[var(--muted)]">
+                              {opp.probabilite}% de probabilité
+                            </span>
+                          )}
+                          {opp.dateCloturePrevue && (
+                            <span className="text-xs text-[var(--muted)]">
+                              Clôture prévue : {formaterDate(opp.dateCloturePrevue)}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                      <p className="text-lg font-semibold text-[var(--primary)]">
+                        {formaterMontant(opp.montantEstime || 0)}
+                      </p>
+                    </button>
+                  ))
+                ) : (
+                  <div className="flex flex-col items-center justify-center py-12">
+                    <Target className="h-12 w-12 text-[var(--muted)]" />
+                    <p className="mt-4 text-[var(--muted)]">Aucune opportunité</p>
+                    <button
+                      onClick={() => setModaleOpportuniteOuverte(true)}
+                      className="mt-4 flex items-center gap-2 rounded-lg bg-[var(--primary)] px-4 py-2 text-sm font-medium text-[var(--primary-foreground)]"
+                    >
+                      <Plus className="h-4 w-4" />
+                      Créer une opportunité
+                    </button>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* ═══ ONGLET TICKETS ═══ */}
+            {ongletActif === 'tickets' && (
+              <div className="space-y-3">
+                {client.tickets && client.tickets.length > 0 ? (
+                  client.tickets.map((ticket) => (
+                    <button
+                      key={ticket.id}
+                      onClick={() => ouvrirEditionTicket(ticket as Ticket)}
+                      className="flex w-full items-center justify-between rounded-lg border border-[var(--border)] p-4 text-left transition-colors hover:bg-[var(--card)]"
+                    >
+                      <div className="flex-1">
+                        <p className="font-medium hover:text-[var(--primary)]">{ticket.sujet}</p>
+                        <div className="mt-1 flex items-center gap-3">
+                          <span className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${badgeStatutTicket[ticket.statutTicket] || ''}`}>
+                            {ticket.statutTicket.replace('_', ' ')}
+                          </span>
+                          <span className="text-xs text-[var(--muted)]">
+                            {formaterDate(ticket.dateCreation)}
+                          </span>
+                        </div>
+                      </div>
+                      <span className={`inline-flex rounded-full px-2.5 py-1 text-xs font-medium ${badgePriorite[ticket.priorite] || ''}`}>
+                        {ticket.priorite}
+                      </span>
+                    </button>
+                  ))
+                ) : (
+                  <div className="flex flex-col items-center justify-center py-12">
+                    <TicketIcon className="h-12 w-12 text-[var(--muted)]" />
+                    <p className="mt-4 text-[var(--muted)]">Aucun ticket</p>
+                    <button
+                      onClick={() => setModaleTicketOuverte(true)}
+                      className="mt-4 flex items-center gap-2 rounded-lg bg-[var(--primary)] px-4 py-2 text-sm font-medium text-[var(--primary-foreground)]"
+                    >
+                      <Plus className="h-4 w-4" />
+                      Créer un ticket
+                    </button>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* ═══ ONGLET TIMELINE ═══ */}
+            {ongletActif === 'timeline' && (
+              <div className="space-y-4">
+                {client.evenements && client.evenements.length > 0 ? (
+                  client.evenements.map((evt) => (
+                    <div key={evt.id} className="flex gap-4">
+                      <div className="flex flex-col items-center">
+                        <div className="h-3 w-3 rounded-full bg-[var(--primary)]" />
+                        <div className="w-0.5 flex-1 bg-[var(--border)]" />
+                      </div>
+                      <div className="flex-1 pb-6">
+                        <p className="text-xs text-[var(--muted)]">
+                          {formaterDate(evt.dateEvenement)}
+                        </p>
+                        <p className="mt-1">{evt.descriptionTexte}</p>
+                      </div>
+                    </div>
+                  ))
+                ) : (
+                  <div className="flex flex-col items-center justify-center py-12">
+                    <Clock className="h-12 w-12 text-[var(--muted)]" />
+                    <p className="mt-4 text-[var(--muted)]">Aucun événement</p>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        </main>
       </div>
 
-      {/* Modales */}
+      {/* ═══════════════════════════════════════════════════════════════════
+          MODALES
+      ═══════════════════════════════════════════════════════════════════ */}
       <ModaleNouveauContact
         ouverte={modaleContactOuverte}
         onFermer={() => setModaleContactOuverte(false)}
@@ -307,6 +649,16 @@ export default function FicheClient({ params }: PageProps) {
         ouverte={modaleEditionOuverte}
         onFermer={() => setModaleEditionOuverte(false)}
         client={client}
+      />
+      <ModaleEditionOpportunite
+        ouverte={modaleEditionOpportuniteOuverte}
+        onFermer={fermerEditionOpportunite}
+        opportunite={opportuniteSelectionnee}
+      />
+      <ModaleEditionTicket
+        ouverte={modaleEditionTicketOuverte}
+        onFermer={fermerEditionTicket}
+        ticket={ticketSelectionne}
       />
     </div>
   );

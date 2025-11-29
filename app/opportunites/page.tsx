@@ -1,57 +1,50 @@
 'use client';
 
 import { useState, useMemo } from 'react';
-import { Plus, Loader2, Search } from 'lucide-react';
-import { PageHeader } from '@/components/layout/PageHeader';
+import Link from 'next/link';
+import {
+  Plus,
+  Loader2,
+  Search,
+  LayoutGrid,
+  List,
+  TrendingUp,
+  Target,
+  Trophy,
+  Filter,
+  ChevronDown,
+} from 'lucide-react';
 import { useOpportunites, useMettreAJourOpportunite, useClients } from '@/lib/hooks';
 import { ModaleNouvelleOpportunite } from '@/components/opportunites/ModaleNouvelleOpportunite';
-import { PanneauFiltres } from '@/components/filtres/PanneauFiltres';
+import { ModaleEditionOpportunite } from '@/components/opportunites/ModaleEditionOpportunite';
 import { KanbanBoard } from '@/components/opportunites/KanbanBoard';
 import { BoutonExportCSV } from '@/components/ui/BoutonExportCSV';
 import { colonnesOpportunites } from '@/lib/export-csv';
+import { formaterMontant, formaterDate } from '@/lib/utils';
+import type { Opportunite } from '@/lib/api';
 
 const etapesPipeline = [
-  { id: 'lead', nom: 'Lead', couleur: 'border-gray-300' },
-  { id: 'qualifie', nom: 'Qualifié', couleur: 'border-blue-400' },
-  { id: 'proposition_envoyee', nom: 'Proposition', couleur: 'border-purple-400' },
-  { id: 'negociation', nom: 'Négociation', couleur: 'border-orange-400' },
-  { id: 'gagne', nom: 'Gagné', couleur: 'border-green-400' },
+  { id: 'lead', nom: 'Lead', couleur: 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300' },
+  { id: 'qualifie', nom: 'Qualifié', couleur: 'bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300' },
+  { id: 'proposition_envoyee', nom: 'Proposition', couleur: 'bg-purple-100 text-purple-700 dark:bg-purple-900 dark:text-purple-300' },
+  { id: 'negociation', nom: 'Négociation', couleur: 'bg-orange-100 text-orange-700 dark:bg-orange-900 dark:text-orange-300' },
+  { id: 'gagne', nom: 'Gagné', couleur: 'bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300' },
 ];
+
+type VueType = 'kanban' | 'liste';
 
 export default function PipelineOpportunites() {
   const [modaleOuverte, setModaleOuverte] = useState(false);
+  const [modaleEditionOuverte, setModaleEditionOuverte] = useState(false);
+  const [opportuniteSelectionnee, setOpportuniteSelectionnee] = useState<Opportunite | null>(null);
   const [recherche, setRecherche] = useState('');
   const [filtres, setFiltres] = useState<Record<string, string | number | undefined>>({});
+  const [vue, setVue] = useState<VueType>('kanban');
+  const [filtresOuverts, setFiltresOuverts] = useState(false);
   
   const { data: opportunites, isLoading, error } = useOpportunites();
   const { data: clients } = useClients({});
   const mettreAJourMutation = useMettreAJourOpportunite();
-
-  // Configuration des filtres
-  const configFiltres = useMemo(() => [
-    {
-      id: 'clientId',
-      label: 'Client',
-      type: 'select' as const,
-      options: (clients || []).map((c) => ({ valeur: c.id, label: c.nom })),
-    },
-    {
-      id: 'montant',
-      label: 'Montant (€)',
-      type: 'numberRange' as const,
-      min: 0,
-    },
-    {
-      id: 'dateCreation',
-      label: 'Date de création',
-      type: 'dateRange' as const,
-    },
-    {
-      id: 'dateCloture',
-      label: 'Date de clôture prévue',
-      type: 'dateRange' as const,
-    },
-  ], [clients]);
 
   // Filtrage des opportunités
   const opportunitesFiltrees = useMemo(() => {
@@ -68,6 +61,9 @@ export default function PipelineOpportunites() {
       
       // Filtre par client
       if (filtres.clientId && opp.clientId !== filtres.clientId) return false;
+      
+      // Filtre par étape
+      if (filtres.etape && opp.etapePipeline !== filtres.etape) return false;
       
       // Filtre par montant
       if (filtres.montantMin && (opp.montantEstime || 0) < (filtres.montantMin as number)) return false;
@@ -124,56 +120,240 @@ export default function PipelineOpportunites() {
     }
   };
 
+  // Calcul des statistiques
+  const stats = useMemo(() => {
+    if (!opportunites) return { caTotal: 0, caPondere: 0, caGagne: 0, enCours: 0 };
+    
+    const caTotal = opportunites
+      .filter((o) => o.etapePipeline !== 'perdu')
+      .reduce((sum, o) => sum + (o.montantEstime || 0), 0);
+    
+    const caPondere = opportunites
+      .filter((o) => !['gagne', 'perdu'].includes(o.etapePipeline))
+      .reduce((sum, o) => sum + ((o.montantEstime || 0) * (o.probabilite || 0) / 100), 0);
+    
+    const caGagne = opportunites
+      .filter((o) => o.etapePipeline === 'gagne')
+      .reduce((sum, o) => sum + (o.montantEstime || 0), 0);
+    
+    const enCours = opportunites.filter((o) => !['gagne', 'perdu'].includes(o.etapePipeline)).length;
+    
+    return { caTotal, caPondere, caGagne, enCours };
+  }, [opportunites]);
+
+  // Nombre de filtres actifs
+  const nombreFiltresActifs = Object.values(filtres).filter(Boolean).length;
+
+  // Ouvrir la modale d'édition
+  const ouvrirEdition = (opp: Opportunite) => {
+    setOpportuniteSelectionnee(opp);
+    setModaleEditionOuverte(true);
+  };
+
+  const fermerEdition = () => {
+    setModaleEditionOuverte(false);
+    setOpportuniteSelectionnee(null);
+  };
+
   return (
     <div className="flex h-full flex-col">
-      <PageHeader
-        titre="Opportunités"
-        description="Pipeline de vos missions potentielles"
-      >
-        <BoutonExportCSV
-          donnees={opportunitesFiltrees.map((o) => ({
-            ...o,
-            clientNom: o.client?.nom || '',
-            dateCreation: new Date(o.dateCreation).toLocaleDateString('fr-FR'),
-            dateCloturePrevue: o.dateCloturePrevue
-              ? new Date(o.dateCloturePrevue).toLocaleDateString('fr-FR')
-              : '',
-          }))}
-          colonnes={colonnesOpportunites}
-          nomFichier="opportunites"
-        />
-        <button
-          onClick={() => setModaleOuverte(true)}
-          className="flex items-center gap-2 rounded-lg bg-[var(--primary)] px-4 py-2 text-sm font-medium text-[var(--primary-foreground)] transition-colors hover:opacity-90"
-        >
-          <Plus className="h-4 w-4" />
-          Nouvelle opportunité
-        </button>
-      </PageHeader>
+      {/* ═══════════════════════════════════════════════════════════════════
+          HEADER
+      ═══════════════════════════════════════════════════════════════════ */}
+      <header className="border-b border-[var(--border)] bg-[var(--background)]">
+        {/* Ligne 1 : Titre + Actions */}
+        <div className="flex items-center justify-between px-6 py-4">
+          <div>
+            <h1 className="text-2xl font-bold">Pipeline</h1>
+            <p className="text-sm text-[var(--muted)]">
+              {opportunitesFiltrees.length} opportunité{opportunitesFiltrees.length > 1 ? 's' : ''}
+            </p>
+          </div>
 
-      {/* Barre de recherche et filtres */}
-      <div className="px-6 pt-6">
-        <div className="mb-4">
-          <div className="relative max-w-md">
+          <div className="flex items-center gap-2">
+            <BoutonExportCSV
+              donnees={opportunitesFiltrees.map((o) => ({
+                ...o,
+                clientNom: o.client?.nom || '',
+                dateCreation: new Date(o.dateCreation).toLocaleDateString('fr-FR'),
+                dateCloturePrevue: o.dateCloturePrevue
+                  ? new Date(o.dateCloturePrevue).toLocaleDateString('fr-FR')
+                  : '',
+              }))}
+              colonnes={colonnesOpportunites}
+              nomFichier="opportunites"
+            />
+            <button
+              onClick={() => setModaleOuverte(true)}
+              className="flex items-center gap-2 rounded-lg bg-[var(--primary)] px-4 py-2 text-sm font-medium text-[var(--primary-foreground)] transition-opacity hover:opacity-90"
+            >
+              <Plus className="h-4 w-4" />
+              Nouvelle opportunité
+            </button>
+          </div>
+        </div>
+
+        {/* Ligne 2 : Statistiques */}
+        <div className="flex gap-6 border-t border-[var(--border)] px-6 py-3">
+          <div className="flex items-center gap-2">
+            <Target className="h-4 w-4 text-[var(--muted)]" />
+            <span className="text-sm text-[var(--muted)]">En cours</span>
+            <span className="font-semibold">{stats.enCours}</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <TrendingUp className="h-4 w-4 text-[var(--muted)]" />
+            <span className="text-sm text-[var(--muted)]">CA potentiel</span>
+            <span className="font-semibold">{formaterMontant(stats.caTotal)}</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <TrendingUp className="h-4 w-4 text-[var(--primary)]" />
+            <span className="text-sm text-[var(--muted)]">CA pondéré</span>
+            <span className="font-semibold text-[var(--primary)]">{formaterMontant(stats.caPondere)}</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <Trophy className="h-4 w-4 text-green-600" />
+            <span className="text-sm text-[var(--muted)]">CA gagné</span>
+            <span className="font-semibold text-green-600">{formaterMontant(stats.caGagne)}</span>
+          </div>
+        </div>
+      </header>
+
+      {/* ═══════════════════════════════════════════════════════════════════
+          BARRE D'OUTILS
+      ═══════════════════════════════════════════════════════════════════ */}
+      <div className="flex items-center justify-between border-b border-[var(--border)] px-6 py-3">
+        {/* Gauche : Recherche + Filtres */}
+        <div className="flex items-center gap-3">
+          <div className="relative">
             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--muted)]" />
             <input
               type="text"
-              placeholder="Rechercher une opportunité..."
+              placeholder="Rechercher..."
               value={recherche}
               onChange={(e) => setRecherche(e.target.value)}
-              className="w-full rounded-lg border border-[var(--border)] bg-[var(--background)] py-2 pl-10 pr-4 text-sm focus:border-[var(--primary)] focus:outline-none"
+              className="w-64 rounded-lg border border-[var(--border)] bg-[var(--background)] py-2 pl-10 pr-4 text-sm focus:border-[var(--primary)] focus:outline-none"
             />
           </div>
+
+          <button
+            onClick={() => setFiltresOuverts(!filtresOuverts)}
+            className={`flex items-center gap-2 rounded-lg border px-3 py-2 text-sm font-medium transition-colors ${
+              nombreFiltresActifs > 0
+                ? 'border-[var(--primary)] bg-[var(--primary)]/10 text-[var(--primary)]'
+                : 'border-[var(--border)] hover:bg-[var(--border)]'
+            }`}
+          >
+            <Filter className="h-4 w-4" />
+            Filtres
+            {nombreFiltresActifs > 0 && (
+              <span className="flex h-5 w-5 items-center justify-center rounded-full bg-[var(--primary)] text-xs text-[var(--primary-foreground)]">
+                {nombreFiltresActifs}
+              </span>
+            )}
+            <ChevronDown className={`h-4 w-4 transition-transform ${filtresOuverts ? 'rotate-180' : ''}`} />
+          </button>
+
+          {nombreFiltresActifs > 0 && (
+            <button
+              onClick={reinitialiserFiltres}
+              className="text-sm text-[var(--muted)] hover:text-[var(--foreground)]"
+            >
+              Réinitialiser
+            </button>
+          )}
         </div>
-        <PanneauFiltres
-          filtres={configFiltres}
-          valeurs={filtres}
-          onChange={gererChangementFiltre}
-          onReinitialiser={reinitialiserFiltres}
-          nombreResultats={opportunitesFiltrees.length}
-        />
+
+        {/* Droite : Toggle vue */}
+        <div className="flex items-center rounded-lg border border-[var(--border)] p-1">
+          <button
+            onClick={() => setVue('kanban')}
+            className={`flex items-center gap-2 rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${
+              vue === 'kanban'
+                ? 'bg-[var(--primary)] text-[var(--primary-foreground)]'
+                : 'text-[var(--muted)] hover:text-[var(--foreground)]'
+            }`}
+          >
+            <LayoutGrid className="h-4 w-4" />
+            Kanban
+          </button>
+          <button
+            onClick={() => setVue('liste')}
+            className={`flex items-center gap-2 rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${
+              vue === 'liste'
+                ? 'bg-[var(--primary)] text-[var(--primary-foreground)]'
+                : 'text-[var(--muted)] hover:text-[var(--foreground)]'
+            }`}
+          >
+            <List className="h-4 w-4" />
+            Liste
+          </button>
+        </div>
       </div>
 
+      {/* Panneau de filtres (collapsible) */}
+      {filtresOuverts && (
+        <div className="border-b border-[var(--border)] bg-[var(--card)] px-6 py-4">
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            {/* Filtre Client */}
+            <div>
+              <label className="mb-1 block text-xs font-medium text-[var(--muted)]">Client</label>
+              <select
+                value={(filtres.clientId as string) || ''}
+                onChange={(e) => gererChangementFiltre('clientId', e.target.value || undefined)}
+                className="w-full rounded-lg border border-[var(--border)] bg-[var(--background)] px-3 py-2 text-sm focus:border-[var(--primary)] focus:outline-none"
+              >
+                <option value="">Tous les clients</option>
+                {(clients || []).map((c) => (
+                  <option key={c.id} value={c.id}>{c.nom}</option>
+                ))}
+              </select>
+            </div>
+
+            {/* Filtre Étape */}
+            <div>
+              <label className="mb-1 block text-xs font-medium text-[var(--muted)]">Étape</label>
+              <select
+                value={(filtres.etape as string) || ''}
+                onChange={(e) => gererChangementFiltre('etape', e.target.value || undefined)}
+                className="w-full rounded-lg border border-[var(--border)] bg-[var(--background)] px-3 py-2 text-sm focus:border-[var(--primary)] focus:outline-none"
+              >
+                <option value="">Toutes les étapes</option>
+                {etapesPipeline.map((e) => (
+                  <option key={e.id} value={e.id}>{e.nom}</option>
+                ))}
+              </select>
+            </div>
+
+            {/* Filtre Montant min */}
+            <div>
+              <label className="mb-1 block text-xs font-medium text-[var(--muted)]">Montant min (€)</label>
+              <input
+                type="number"
+                value={(filtres.montantMin as number) || ''}
+                onChange={(e) => gererChangementFiltre('montantMin', e.target.value ? Number(e.target.value) : undefined)}
+                placeholder="0"
+                className="w-full rounded-lg border border-[var(--border)] bg-[var(--background)] px-3 py-2 text-sm focus:border-[var(--primary)] focus:outline-none"
+              />
+            </div>
+
+            {/* Filtre Montant max */}
+            <div>
+              <label className="mb-1 block text-xs font-medium text-[var(--muted)]">Montant max (€)</label>
+              <input
+                type="number"
+                value={(filtres.montantMax as number) || ''}
+                onChange={(e) => gererChangementFiltre('montantMax', e.target.value ? Number(e.target.value) : undefined)}
+                placeholder="∞"
+                className="w-full rounded-lg border border-[var(--border)] bg-[var(--background)] px-3 py-2 text-sm focus:border-[var(--primary)] focus:outline-none"
+              />
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ═══════════════════════════════════════════════════════════════════
+          CONTENU
+      ═══════════════════════════════════════════════════════════════════ */}
       {/* État de chargement */}
       {isLoading && (
         <div className="flex flex-1 items-center justify-center">
@@ -183,19 +363,112 @@ export default function PipelineOpportunites() {
 
       {/* Erreur */}
       {error && (
-        <div className="m-6 rounded-lg border border-red-300 bg-red-50 p-4 text-red-700">
+        <div className="m-6 rounded-lg border border-red-300 bg-red-50 p-4 text-red-700 dark:border-red-800 dark:bg-red-900/20 dark:text-red-400">
           Erreur lors du chargement des opportunités
         </div>
       )}
 
-      {/* Kanban board avec drag & drop */}
-      {!isLoading && !error && (
+      {/* Vue Kanban */}
+      {!isLoading && !error && vue === 'kanban' && (
         <div className="flex-1 overflow-x-auto p-6">
           <KanbanBoard
-            etapes={etapesPipeline}
+            etapes={etapesPipeline.map((e) => ({ ...e, couleur: `border-l-4 ${e.couleur.replace('bg-', 'border-').split(' ')[0]}` }))}
             opportunites={opportunitesFiltrees}
             onChangerEtape={changerEtape}
+            onClickOpportunite={ouvrirEdition}
           />
+        </div>
+      )}
+
+      {/* Vue Liste */}
+      {!isLoading && !error && vue === 'liste' && (
+        <div className="flex-1 overflow-y-auto p-6">
+          {opportunitesFiltrees.length > 0 ? (
+            <div className="rounded-lg border border-[var(--border)]">
+              <table className="w-full">
+                <thead>
+                  <tr className="border-b border-[var(--border)] bg-[var(--card)]">
+                    <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-[var(--muted)]">
+                      Opportunité
+                    </th>
+                    <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-[var(--muted)]">
+                      Client
+                    </th>
+                    <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-[var(--muted)]">
+                      Étape
+                    </th>
+                    <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-[var(--muted)]">
+                      Montant
+                    </th>
+                    <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-[var(--muted)]">
+                      Probabilité
+                    </th>
+                    <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-[var(--muted)]">
+                      Clôture prévue
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-[var(--border)]">
+                  {opportunitesFiltrees.map((opp) => {
+                    const etape = etapesPipeline.find((e) => e.id === opp.etapePipeline);
+                    return (
+                      <tr
+                        key={opp.id}
+                        className="transition-colors hover:bg-[var(--card)]"
+                      >
+                        <td className="px-4 py-3">
+                          <button
+                            onClick={() => ouvrirEdition(opp)}
+                            className="font-medium text-[var(--foreground)] hover:text-[var(--primary)] hover:underline"
+                          >
+                            {opp.titre}
+                          </button>
+                        </td>
+                        <td className="px-4 py-3">
+                          {opp.client ? (
+                            <Link
+                              href={`/clients/${opp.clientId}`}
+                              className="text-[var(--primary)] hover:underline"
+                            >
+                              {opp.client.nom}
+                            </Link>
+                          ) : (
+                            <span className="text-[var(--muted)]">—</span>
+                          )}
+                        </td>
+                        <td className="px-4 py-3">
+                          <span className={`inline-flex rounded-full px-2.5 py-1 text-xs font-medium ${etape?.couleur || ''}`}>
+                            {etape?.nom || opp.etapePipeline}
+                          </span>
+                        </td>
+                        <td className="px-4 py-3 text-right font-medium">
+                          {formaterMontant(opp.montantEstime || 0)}
+                        </td>
+                        <td className="px-4 py-3 text-right">
+                          <span className="text-[var(--muted)]">{opp.probabilite || 0}%</span>
+                        </td>
+                        <td className="px-4 py-3 text-sm text-[var(--muted)]">
+                          {opp.dateCloturePrevue ? formaterDate(opp.dateCloturePrevue) : '—'}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          ) : (
+            <div className="flex flex-col items-center justify-center py-12">
+              <Target className="h-12 w-12 text-[var(--muted)]" />
+              <p className="mt-4 text-[var(--muted)]">Aucune opportunité</p>
+              <button
+                onClick={() => setModaleOuverte(true)}
+                className="mt-4 flex items-center gap-2 rounded-lg bg-[var(--primary)] px-4 py-2 text-sm font-medium text-[var(--primary-foreground)]"
+              >
+                <Plus className="h-4 w-4" />
+                Créer une opportunité
+              </button>
+            </div>
+          )}
         </div>
       )}
 
@@ -203,6 +476,13 @@ export default function PipelineOpportunites() {
       <ModaleNouvelleOpportunite
         ouverte={modaleOuverte}
         onFermer={() => setModaleOuverte(false)}
+      />
+
+      {/* Modale d'édition */}
+      <ModaleEditionOpportunite
+        ouverte={modaleEditionOuverte}
+        onFermer={fermerEdition}
+        opportunite={opportuniteSelectionnee}
       />
     </div>
   );

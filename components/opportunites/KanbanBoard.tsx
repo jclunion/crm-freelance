@@ -26,10 +26,17 @@ interface KanbanBoardProps {
   etapes: EtapePipeline[];
   opportunites: Opportunite[];
   onChangerEtape: (oppId: string, nouvelleEtape: string) => Promise<void>;
+  onClickOpportunite?: (opportunite: Opportunite) => void;
 }
 
 // Carte d'opportunité draggable
-function CarteOpportunite({ opportunite }: { opportunite: Opportunite }) {
+function CarteOpportunite({ 
+  opportunite, 
+  onClick 
+}: { 
+  opportunite: Opportunite;
+  onClick?: () => void;
+}) {
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
     id: opportunite.id,
     data: {
@@ -60,7 +67,12 @@ function CarteOpportunite({ opportunite }: { opportunite: Opportunite }) {
           <GripVertical className="h-4 w-4" />
         </button>
         <div className="flex-1 min-w-0">
-          <h4 className="font-medium truncate">{opportunite.titre}</h4>
+          <button
+            onClick={onClick}
+            className="font-medium truncate text-left hover:text-[var(--primary)] hover:underline"
+          >
+            {opportunite.titre}
+          </button>
           <p className="mt-1 text-sm text-[var(--muted)] truncate">
             {opportunite.client?.nom || 'Client inconnu'}
           </p>
@@ -99,9 +111,11 @@ function CarteOpportuniteOverlay({ opportunite }: { opportunite: Opportunite }) 
 function ColonneKanban({
   etape,
   opportunites,
+  onClickOpportunite,
 }: {
   etape: EtapePipeline;
   opportunites: Opportunite[];
+  onClickOpportunite?: (opportunite: Opportunite) => void;
 }) {
   const { setNodeRef, isOver } = useDroppable({
     id: etape.id,
@@ -139,7 +153,11 @@ function ColonneKanban({
         }`}
       >
         {opportunites.map((opp) => (
-          <CarteOpportunite key={opp.id} opportunite={opp} />
+          <CarteOpportunite 
+            key={opp.id} 
+            opportunite={opp} 
+            onClick={() => onClickOpportunite?.(opp)}
+          />
         ))}
 
         {opportunites.length === 0 && (
@@ -158,7 +176,7 @@ function ColonneKanban({
   );
 }
 
-export function KanbanBoard({ etapes, opportunites, onChangerEtape }: KanbanBoardProps) {
+export function KanbanBoard({ etapes, opportunites, onChangerEtape, onClickOpportunite }: KanbanBoardProps) {
   const [activeId, setActiveId] = useState<string | null>(null);
 
   const sensors = useSensors(
@@ -218,6 +236,7 @@ export function KanbanBoard({ etapes, opportunites, onChangerEtape }: KanbanBoar
             key={etape.id}
             etape={etape}
             opportunites={etape.opportunites}
+            onClickOpportunite={onClickOpportunite}
           />
         ))}
       </div>
