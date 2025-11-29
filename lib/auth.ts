@@ -5,7 +5,8 @@ import bcrypt from 'bcryptjs';
 import { prisma } from './prisma';
 
 export const authOptions: NextAuthOptions = {
-  adapter: PrismaAdapter(prisma) as NextAuthOptions['adapter'],
+  // Désactiver l'adapter pendant le build
+  adapter: process.env.SKIP_ENV_VALIDATION ? undefined : PrismaAdapter(prisma) as NextAuthOptions['adapter'],
   providers: [
     CredentialsProvider({
       name: 'Identifiants',
