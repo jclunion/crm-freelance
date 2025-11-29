@@ -1,12 +1,13 @@
 'use client';
 
-import { useState } from 'react';
+import { Suspense, useState } from 'react';
 import { signIn } from 'next-auth/react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { Loader2, Mail, Lock } from 'lucide-react';
 
-export default function PageConnexion() {
+// Composant séparé qui utilise useSearchParams
+function FormulaireConnexion() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const callbackUrl = searchParams.get('callbackUrl') || '/';
@@ -117,5 +118,18 @@ export default function PageConnexion() {
         </div>
       </div>
     </div>
+  );
+}
+
+// Page principale avec Suspense
+export default function PageConnexion() {
+  return (
+    <Suspense fallback={
+      <div className="flex min-h-screen items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-[var(--primary)]" />
+      </div>
+    }>
+      <FormulaireConnexion />
+    </Suspense>
   );
 }
