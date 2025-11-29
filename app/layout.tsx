@@ -4,6 +4,8 @@ import { Sidebar } from '@/components/layout/Sidebar';
 import { QueryProvider } from '@/components/providers/QueryProvider';
 import { SessionProvider } from '@/components/providers/SessionProvider';
 import { ThemeProvider } from '@/components/theme/ThemeProvider';
+import { ToastProvider } from '@/components/ui/Toast';
+import { RechercheGlobale } from '@/components/ui/RechercheGlobale';
 
 export const metadata: Metadata = {
   title: 'CRM Freelance',
@@ -21,12 +23,15 @@ export default function RootLayout({
         <ThemeProvider>
           <SessionProvider>
             <QueryProvider>
-              <div className="flex min-h-screen">
-                <Sidebar />
-                <main className="flex-1 overflow-auto">
-                  {children}
-                </main>
-              </div>
+              <ToastProvider>
+                <div className="flex min-h-screen">
+                  <Sidebar />
+                  <main className="flex-1 overflow-auto">
+                    {children}
+                  </main>
+                </div>
+                <RechercheGlobale />
+              </ToastProvider>
             </QueryProvider>
           </SessionProvider>
         </ThemeProvider>

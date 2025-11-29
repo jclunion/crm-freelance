@@ -85,9 +85,11 @@ crm/
 │   ├── contacts/                 # Modales contact
 │   ├── filtres/                  # Panneau filtres avancés
 │   ├── layout/                   # Sidebar, PageHeader
-│   ├── opportunites/             # Modales opportunité
+│   ├── opportunites/             # Modales opportunité, KanbanBoard
 │   ├── providers/                # QueryProvider, SessionProvider
-│   └── tickets/                  # Modales ticket
+│   ├── theme/                    # ThemeProvider, ThemeToggle
+│   ├── tickets/                  # Modales ticket
+│   └── ui/                       # Toast, RechercheGlobale, BoutonExportCSV
 ├── lib/                          # Utilitaires
 │   ├── api.ts                    # Fonctions fetch API
 │   ├── auth.ts                   # Config NextAuth
@@ -126,12 +128,15 @@ crm/
 
 ### Pipeline d'opportunités
 - ✅ Vue Kanban par étape (Lead → Gagné)
-- ✅ **Drag & drop** pour changer d'étape
+- ✅ **Drag & drop** fluide avec mise à jour optimiste
+- ✅ Vue liste alternative avec colonnes configurables
 - ✅ Filtres par client, montant, dates
 - ✅ Calcul du total par colonne
 
 ### Tickets de support
 - ✅ Liste avec filtres (statut, priorité, type, client)
+- ✅ Vue Kanban par statut
+- ✅ Colonnes configurables en vue liste
 - ✅ Fiche ticket détaillée
 - ✅ Changement de statut rapide
 - ✅ Lien vers la fiche client
@@ -201,10 +206,28 @@ EvenementTimeline ◄─────┘
 - ✅ Détection automatique des préférences système
 - ✅ Toggle accessible dans la sidebar
 
+### Interface utilisateur
+- ✅ **Barre Display** sur toutes les listes (recherche, filtres, colonnes, vue)
+- ✅ **Notifications toast** (succès, erreur, warning, info)
+- ✅ **Recherche globale** (`Ctrl+K` / `Cmd+K`)
+- ✅ **Micro-animations** (modales, hover, transitions)
+- ✅ Sélecteur de colonnes dynamique
+- ✅ Toggle vue Liste / Kanban / Grille
+
+### Raccourcis clavier
+| Raccourci | Action |
+|-----------|--------|
+| `Ctrl+K` / `Cmd+K` | Recherche globale |
+| `↑` `↓` | Naviguer dans les résultats |
+| `Enter` | Sélectionner un résultat |
+| `Escape` | Fermer la recherche |
+
 ## Prochaines fonctionnalités
 
 - ⬜ Notifications email
 - ⬜ Multi-utilisateurs (équipe)
+- ⬜ Export PDF des fiches clients
+- ⬜ Mode hors-ligne (PWA)
 
 ## Licence MIT
 

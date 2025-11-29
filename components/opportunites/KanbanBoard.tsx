@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import {
   DndContext,
   DragOverlay,
@@ -178,6 +178,14 @@ function ColonneKanban({
 
 export function KanbanBoard({ etapes, opportunites, onChangerEtape, onClickOpportunite }: KanbanBoardProps) {
   const [activeId, setActiveId] = useState<string | null>(null);
+  
+  // État local pour les opportunités (mise à jour optimiste)
+  const [opportunitesLocales, setOpportunitesLocales] = useState<Opportunite[]>(opportunites);
+
+  // Synchroniser avec les props quand elles changent (après mutation réussie)
+  useEffect(() => {
+    setOpportunitesLocales(opportunites);
+  }, [opportunites]);
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -189,20 +197,20 @@ export function KanbanBoard({ etapes, opportunites, onChangerEtape, onClickOppor
 
   // Trouver l'opportunité active
   const activeOpportunite = activeId
-    ? opportunites.find((o) => o.id === activeId)
+    ? opportunitesLocales.find((o) => o.id === activeId)
     : null;
 
-  // Grouper les opportunités par étape
+  // Grouper les opportunités par étape (utiliser l'état local)
   const opportunitesParEtape = etapes.map((etape) => ({
     ...etape,
-    opportunites: opportunites.filter((opp) => opp.etapePipeline === etape.id),
+    opportunites: opportunitesLocales.filter((opp) => opp.etapePipeline === etape.id),
   }));
 
   const handleDragStart = (event: DragStartEvent) => {
     setActiveId(event.active.id as string);
   };
 
-  const handleDragEnd = async (event: DragEndEvent) => {
+  const handleDragEnd = useCallback(async (event: DragEndEvent) => {
     const { active, over } = event;
     setActiveId(null);
 
@@ -212,17 +220,35 @@ export function KanbanBoard({ etapes, opportunites, onChangerEtape, onClickOppor
     const nouvelleEtape = over.id as string;
 
     // Trouver l'étape actuelle de l'opportunité
-    const opp = opportunites.find((o) => o.id === activeOppId);
+    const opp = opportunitesLocales.find((o) => o.id === activeOppId);
     const etapeActuelle = opp?.etapePipeline;
 
     // Si l'étape a changé, mettre à jour
     if (etapeActuelle && nouvelleEtape && etapeActuelle !== nouvelleEtape) {
       // Vérifier que la destination est une étape valide
       if (etapes.some((e) => e.id === nouvelleEtape)) {
-        await onChangerEtape(activeOppId, nouvelleEtape);
+        // Mise à jour optimiste immédiate
+        setOpportunitesLocales((prev) =>
+          prev.map((o) =>
+            o.id === activeOppId ? { ...o, etapePipeline: nouvelleEtape } : o
+          )
+        );
+
+        // Appeler l'API en arrière-plan
+        try {
+          await onChangerEtape(activeOppId, nouvelleEtape);
+        } catch (error) {
+          // En cas d'erreur, restaurer l'état précédent
+          setOpportunitesLocales((prev) =>
+            prev.map((o) =>
+              o.id === activeOppId ? { ...o, etapePipeline: etapeActuelle } : o
+            )
+          );
+          console.error('Erreur lors du changement d\'étape:', error);
+        }
       }
     }
-  };
+  }, [opportunitesLocales, etapes, onChangerEtape]);
 
   return (
     <DndContext

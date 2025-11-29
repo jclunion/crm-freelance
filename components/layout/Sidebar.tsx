@@ -13,6 +13,7 @@ import {
 } from 'lucide-react';
 import { cn, genererInitiales } from '@/lib/utils';
 import { ThemeToggle } from '@/components/theme/ThemeToggle';
+import { BoutonRechercheGlobale } from '@/components/ui/RechercheGlobale';
 
 const navigationItems = [
   {
@@ -56,6 +57,11 @@ export function Sidebar() {
         <ThemeToggle />
       </div>
 
+      {/* Barre de recherche */}
+      <div className="px-3 pt-4">
+        <BoutonRechercheGlobale />
+      </div>
+
       {/* Navigation principale */}
       <nav className="flex-1 space-y-1 px-3 py-4">
         {navigationItems.map((item) => {
@@ -67,10 +73,10 @@ export function Sidebar() {
               key={item.href}
               href={item.href}
               className={cn(
-                'flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors',
+                'flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-all duration-200',
                 estActif
                   ? 'bg-[var(--primary)] text-[var(--primary-foreground)]'
-                  : 'text-[var(--muted)] hover:bg-[var(--border)] hover:text-[var(--foreground)]'
+                  : 'text-[var(--muted)] hover:bg-[var(--border)] hover:text-[var(--foreground)] hover:translate-x-1'
               )}
             >
               <item.icone className="h-5 w-5" />

@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { X, Loader2 } from 'lucide-react';
 import { useMettreAJourClient } from '@/lib/hooks';
+import { useToast } from '@/components/ui/Toast';
 import type { ClientComplet } from '@/lib/api';
 
 interface ModaleEditionClientProps {
@@ -24,6 +25,7 @@ export function ModaleEditionClient({
   const [noteInterne, setNoteInterne] = useState(client.noteInterne || '');
 
   const mettreAJourMutation = useMettreAJourClient();
+  const toast = useToast();
 
   // Synchroniser les valeurs quand le client change
   useEffect(() => {
@@ -51,9 +53,11 @@ export function ModaleEditionClient({
         },
       });
 
+      toast.success('Client modifié', `${nom} a été mis à jour`);
       onFermer();
     } catch (erreur) {
       console.error('Erreur mise à jour client:', erreur);
+      toast.error('Erreur', 'Impossible de modifier le client');
     }
   };
 
@@ -62,10 +66,10 @@ export function ModaleEditionClient({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center">
       {/* Overlay */}
-      <div className="absolute inset-0 bg-black/50" onClick={onFermer} />
+      <div className="modal-overlay absolute inset-0 bg-black/50" onClick={onFermer} />
 
       {/* Modale */}
-      <div className="relative z-10 w-full max-w-lg rounded-lg border border-[var(--border)] bg-[var(--background)] shadow-xl">
+      <div className="modal-content relative z-10 w-full max-w-lg rounded-lg border border-[var(--border)] bg-[var(--background)] shadow-xl">
         {/* Header */}
         <div className="flex items-center justify-between border-b border-[var(--border)] px-6 py-4">
           <h2 className="text-lg font-semibold">Modifier le client</h2>

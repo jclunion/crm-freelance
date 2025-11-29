@@ -13,6 +13,8 @@ import {
   Trophy,
   Filter,
   ChevronDown,
+  Columns,
+  X,
 } from 'lucide-react';
 import { useOpportunites, useMettreAJourOpportunite, useClients } from '@/lib/hooks';
 import { ModaleNouvelleOpportunite } from '@/components/opportunites/ModaleNouvelleOpportunite';
@@ -33,6 +35,24 @@ const etapesPipeline = [
 
 type VueType = 'kanban' | 'liste';
 
+// Configuration des colonnes affichables
+interface ColonneConfig {
+  id: string;
+  label: string;
+  visible: boolean;
+  obligatoire?: boolean;
+}
+
+const colonnesParDefaut: ColonneConfig[] = [
+  { id: 'titre', label: 'Opportunité', visible: true, obligatoire: true },
+  { id: 'client', label: 'Client', visible: true },
+  { id: 'etape', label: 'Étape', visible: true },
+  { id: 'montant', label: 'Montant', visible: true },
+  { id: 'probabilite', label: 'Probabilité', visible: true },
+  { id: 'cloture', label: 'Clôture prévue', visible: true },
+  { id: 'dateCreation', label: 'Date création', visible: false },
+];
+
 export default function PipelineOpportunites() {
   const [modaleOuverte, setModaleOuverte] = useState(false);
   const [modaleEditionOuverte, setModaleEditionOuverte] = useState(false);
@@ -41,6 +61,8 @@ export default function PipelineOpportunites() {
   const [filtres, setFiltres] = useState<Record<string, string | number | undefined>>({});
   const [vue, setVue] = useState<VueType>('kanban');
   const [filtresOuverts, setFiltresOuverts] = useState(false);
+  const [colonnesOuvertes, setColonnesOuvertes] = useState(false);
+  const [colonnes, setColonnes] = useState<ColonneConfig[]>(colonnesParDefaut);
   
   const { data: opportunites, isLoading, error } = useOpportunites();
   const { data: clients } = useClients({});
@@ -144,6 +166,18 @@ export default function PipelineOpportunites() {
   // Nombre de filtres actifs
   const nombreFiltresActifs = Object.values(filtres).filter(Boolean).length;
 
+  // Toggle colonne
+  const toggleColonne = (id: string) => {
+    setColonnes((prev) =>
+      prev.map((col) =>
+        col.id === id && !col.obligatoire ? { ...col, visible: !col.visible } : col
+      )
+    );
+  };
+
+  // Colonnes visibles
+  const colonnesVisibles = colonnes.filter((col) => col.visible);
+
   // Ouvrir la modale d'édition
   const ouvrirEdition = (opp: Opportunite) => {
     setOpportuniteSelectionnee(opp);
@@ -219,9 +253,9 @@ export default function PipelineOpportunites() {
       </header>
 
       {/* ═══════════════════════════════════════════════════════════════════
-          BARRE D'OUTILS
+          BARRE DISPLAY
       ═══════════════════════════════════════════════════════════════════ */}
-      <div className="flex items-center justify-between border-b border-[var(--border)] px-6 py-3">
+      <div className="flex items-center justify-between border-b border-[var(--border)] bg-[var(--card)] px-6 py-3">
         {/* Gauche : Recherche + Filtres */}
         <div className="flex items-center gap-3">
           <div className="relative">
@@ -238,7 +272,7 @@ export default function PipelineOpportunites() {
           <button
             onClick={() => setFiltresOuverts(!filtresOuverts)}
             className={`flex items-center gap-2 rounded-lg border px-3 py-2 text-sm font-medium transition-colors ${
-              nombreFiltresActifs > 0
+              filtresOuverts || nombreFiltresActifs > 0
                 ? 'border-[var(--primary)] bg-[var(--primary)]/10 text-[var(--primary)]'
                 : 'border-[var(--border)] hover:bg-[var(--border)]'
             }`}
@@ -252,48 +286,84 @@ export default function PipelineOpportunites() {
             )}
             <ChevronDown className={`h-4 w-4 transition-transform ${filtresOuverts ? 'rotate-180' : ''}`} />
           </button>
-
-          {nombreFiltresActifs > 0 && (
-            <button
-              onClick={reinitialiserFiltres}
-              className="text-sm text-[var(--muted)] hover:text-[var(--foreground)]"
-            >
-              Réinitialiser
-            </button>
-          )}
         </div>
 
-        {/* Droite : Toggle vue */}
-        <div className="flex items-center rounded-lg border border-[var(--border)] p-1">
-          <button
-            onClick={() => setVue('kanban')}
-            className={`flex items-center gap-2 rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${
-              vue === 'kanban'
-                ? 'bg-[var(--primary)] text-[var(--primary-foreground)]'
-                : 'text-[var(--muted)] hover:text-[var(--foreground)]'
-            }`}
-          >
-            <LayoutGrid className="h-4 w-4" />
-            Kanban
-          </button>
-          <button
-            onClick={() => setVue('liste')}
-            className={`flex items-center gap-2 rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${
-              vue === 'liste'
-                ? 'bg-[var(--primary)] text-[var(--primary-foreground)]'
-                : 'text-[var(--muted)] hover:text-[var(--foreground)]'
-            }`}
-          >
-            <List className="h-4 w-4" />
-            Liste
-          </button>
+        {/* Droite : Colonnes + Vue */}
+        <div className="flex items-center gap-3">
+          {/* Sélecteur de colonnes (uniquement en vue liste) */}
+          {vue === 'liste' && (
+            <div className="relative">
+              <button
+                onClick={() => setColonnesOuvertes(!colonnesOuvertes)}
+                className={`flex items-center gap-2 rounded-lg border px-3 py-2 text-sm font-medium transition-colors ${
+                  colonnesOuvertes
+                    ? 'border-[var(--primary)] bg-[var(--primary)]/10 text-[var(--primary)]'
+                    : 'border-[var(--border)] hover:bg-[var(--border)]'
+                }`}
+              >
+                <Columns className="h-4 w-4" />
+                Colonnes
+                <ChevronDown className={`h-4 w-4 transition-transform ${colonnesOuvertes ? 'rotate-180' : ''}`} />
+              </button>
+
+              {/* Dropdown colonnes */}
+              {colonnesOuvertes && (
+                <div className="absolute right-0 top-full z-20 mt-2 w-56 rounded-lg border border-[var(--border)] bg-[var(--background)] p-2 shadow-lg animate-slide-down">
+                  <p className="mb-2 px-2 text-xs font-medium text-[var(--muted)]">Colonnes visibles</p>
+                  {colonnes.map((col) => (
+                    <label
+                      key={col.id}
+                      className={`flex cursor-pointer items-center gap-2 rounded-lg px-2 py-1.5 text-sm transition-colors hover:bg-[var(--border)] ${
+                        col.obligatoire ? 'opacity-50' : ''
+                      }`}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={col.visible}
+                        disabled={col.obligatoire}
+                        onChange={() => toggleColonne(col.id)}
+                        className="h-4 w-4 rounded border-[var(--border)] text-[var(--primary)] focus:ring-[var(--primary)]"
+                      />
+                      {col.label}
+                    </label>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Toggle Vue */}
+          <div className="flex rounded-lg border border-[var(--border)] p-1">
+            <button
+              onClick={() => setVue('kanban')}
+              className={`flex items-center gap-2 rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${
+                vue === 'kanban'
+                  ? 'bg-[var(--primary)] text-[var(--primary-foreground)]'
+                  : 'text-[var(--muted)] hover:text-[var(--foreground)]'
+              }`}
+            >
+              <LayoutGrid className="h-4 w-4" />
+              Kanban
+            </button>
+            <button
+              onClick={() => setVue('liste')}
+              className={`flex items-center gap-2 rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${
+                vue === 'liste'
+                  ? 'bg-[var(--primary)] text-[var(--primary-foreground)]'
+                  : 'text-[var(--muted)] hover:text-[var(--foreground)]'
+              }`}
+            >
+              <List className="h-4 w-4" />
+              Liste
+            </button>
+          </div>
         </div>
       </div>
 
       {/* Panneau de filtres (collapsible) */}
       {filtresOuverts && (
-        <div className="border-b border-[var(--border)] bg-[var(--card)] px-6 py-4">
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="animate-slide-down border-b border-[var(--border)] bg-[var(--card)] px-6 py-4">
+          <div className="flex flex-wrap items-end gap-4">
             {/* Filtre Client */}
             <div>
               <label className="mb-1 block text-xs font-medium text-[var(--muted)]">Client</label>
@@ -347,6 +417,17 @@ export default function PipelineOpportunites() {
                 className="w-full rounded-lg border border-[var(--border)] bg-[var(--background)] px-3 py-2 text-sm focus:border-[var(--primary)] focus:outline-none"
               />
             </div>
+
+            {/* Bouton réinitialiser */}
+            {nombreFiltresActifs > 0 && (
+              <button
+                onClick={reinitialiserFiltres}
+                className="flex items-center gap-1 rounded-lg border border-[var(--border)] px-3 py-2 text-sm text-[var(--muted)] transition-colors hover:bg-[var(--border)] hover:text-[var(--foreground)]"
+              >
+                <X className="h-4 w-4" />
+                Réinitialiser
+              </button>
+            )}
           </div>
         </div>
       )}
@@ -388,68 +469,66 @@ export default function PipelineOpportunites() {
               <table className="w-full">
                 <thead>
                   <tr className="border-b border-[var(--border)] bg-[var(--card)]">
-                    <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-[var(--muted)]">
-                      Opportunité
-                    </th>
-                    <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-[var(--muted)]">
-                      Client
-                    </th>
-                    <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-[var(--muted)]">
-                      Étape
-                    </th>
-                    <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-[var(--muted)]">
-                      Montant
-                    </th>
-                    <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-[var(--muted)]">
-                      Probabilité
-                    </th>
-                    <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-[var(--muted)]">
-                      Clôture prévue
-                    </th>
+                    {colonnesVisibles.map((col) => (
+                      <th
+                        key={col.id}
+                        className={`px-4 py-3 text-xs font-semibold uppercase tracking-wider text-[var(--muted)] ${
+                          col.id === 'montant' || col.id === 'probabilite' ? 'text-right' : 'text-left'
+                        }`}
+                      >
+                        {col.label}
+                      </th>
+                    ))}
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-[var(--border)]">
                   {opportunitesFiltrees.map((opp) => {
                     const etape = etapesPipeline.find((e) => e.id === opp.etapePipeline);
                     return (
-                      <tr
-                        key={opp.id}
-                        className="transition-colors hover:bg-[var(--card)]"
-                      >
-                        <td className="px-4 py-3">
-                          <button
-                            onClick={() => ouvrirEdition(opp)}
-                            className="font-medium text-[var(--foreground)] hover:text-[var(--primary)] hover:underline"
+                      <tr key={opp.id} className="transition-colors hover:bg-[var(--card)]">
+                        {colonnesVisibles.map((col) => (
+                          <td
+                            key={col.id}
+                            className={`px-4 py-3 ${col.id === 'montant' || col.id === 'probabilite' ? 'text-right' : ''}`}
                           >
-                            {opp.titre}
-                          </button>
-                        </td>
-                        <td className="px-4 py-3">
-                          {opp.client ? (
-                            <Link
-                              href={`/clients/${opp.clientId}`}
-                              className="text-[var(--primary)] hover:underline"
-                            >
-                              {opp.client.nom}
-                            </Link>
-                          ) : (
-                            <span className="text-[var(--muted)]">—</span>
-                          )}
-                        </td>
-                        <td className="px-4 py-3">
-                          <span className={`inline-flex rounded-full px-2.5 py-1 text-xs font-medium ${etape?.couleur || ''}`}>
-                            {etape?.nom || opp.etapePipeline}
-                          </span>
-                        </td>
-                        <td className="px-4 py-3 text-right font-medium">
-                          {formaterMontant(opp.montantEstime || 0)}
-                        </td>
-                        <td className="px-4 py-3 text-right">
-                          <span className="text-[var(--muted)]">{opp.probabilite || 0}%</span>
-                        </td>
-                        <td className="px-4 py-3 text-sm text-[var(--muted)]">
-                          {opp.dateCloturePrevue ? formaterDate(opp.dateCloturePrevue) : '—'}
-                        </td>
+                            {col.id === 'titre' && (
+                              <button
+                                onClick={() => ouvrirEdition(opp)}
+                                className="font-medium text-[var(--foreground)] hover:text-[var(--primary)] hover:underline"
+                              >
+                                {opp.titre}
+                              </button>
+                            )}
+                            {col.id === 'client' && (
+                              opp.client ? (
+                                <Link href={`/clients/${opp.clientId}`} className="text-[var(--primary)] hover:underline">
+                                  {opp.client.nom}
+                                </Link>
+                              ) : (
+                                <span className="text-[var(--muted)]">—</span>
+                              )
+                            )}
+                            {col.id === 'etape' && (
+                              <span className={`inline-flex rounded-full px-2.5 py-1 text-xs font-medium ${etape?.couleur || ''}`}>
+                                {etape?.nom || opp.etapePipeline}
+                              </span>
+                            )}
+                            {col.id === 'montant' && (
+                              <span className="font-medium">{formaterMontant(opp.montantEstime || 0)}</span>
+                            )}
+                            {col.id === 'probabilite' && (
+                              <span className="text-[var(--muted)]">{opp.probabilite || 0}%</span>
+                            )}
+                            {col.id === 'cloture' && (
+                              <span className="text-sm text-[var(--muted)]">
+                                {opp.dateCloturePrevue ? formaterDate(opp.dateCloturePrevue) : '—'}
+                              </span>
+                            )}
+                            {col.id === 'dateCreation' && (
+                              <span className="text-sm text-[var(--muted)]">{formaterDate(opp.dateCreation)}</span>
+                            )}
+                          </td>
+                        ))}
                       </tr>
                     );
                   })}
@@ -470,6 +549,11 @@ export default function PipelineOpportunites() {
             </div>
           )}
         </div>
+      )}
+
+      {/* Fermer dropdown colonnes si clic ailleurs */}
+      {colonnesOuvertes && (
+        <div className="fixed inset-0 z-10" onClick={() => setColonnesOuvertes(false)} />
       )}
 
       {/* Modale de création */}

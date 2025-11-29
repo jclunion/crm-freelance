@@ -14,6 +14,8 @@ import {
   Clock,
   Filter,
   ChevronDown,
+  Columns,
+  X,
 } from 'lucide-react';
 import { useTickets, useClients } from '@/lib/hooks';
 import { ModaleNouveauTicket } from '@/components/tickets/ModaleNouveauTicket';
@@ -49,6 +51,24 @@ const colonnesKanban = [
 
 type VueType = 'liste' | 'kanban';
 
+// Configuration des colonnes affichables
+interface ColonneConfig {
+  id: string;
+  label: string;
+  visible: boolean;
+  obligatoire?: boolean;
+}
+
+const colonnesParDefaut: ColonneConfig[] = [
+  { id: 'sujet', label: 'Sujet', visible: true, obligatoire: true },
+  { id: 'client', label: 'Client', visible: true },
+  { id: 'type', label: 'Type', visible: true },
+  { id: 'priorite', label: 'Priorité', visible: true },
+  { id: 'statut', label: 'Statut', visible: true },
+  { id: 'dateCreation', label: 'Date création', visible: true },
+  { id: 'assigne', label: 'Assigné', visible: false },
+];
+
 export default function ListeTickets() {
   const [recherche, setRecherche] = useState('');
   const [filtres, setFiltres] = useState<Record<string, string | number | undefined>>({});
@@ -57,6 +77,8 @@ export default function ListeTickets() {
   const [ticketSelectionne, setTicketSelectionne] = useState<Ticket | null>(null);
   const [vue, setVue] = useState<VueType>('liste');
   const [filtresOuverts, setFiltresOuverts] = useState(false);
+  const [colonnesOuvertes, setColonnesOuvertes] = useState(false);
+  const [colonnes, setColonnes] = useState<ColonneConfig[]>(colonnesParDefaut);
 
   const { data: tickets, isLoading, error } = useTickets({
     recherche: recherche || undefined,
@@ -116,6 +138,18 @@ export default function ListeTickets() {
 
   // Nombre de filtres actifs
   const nombreFiltresActifs = Object.values(filtres).filter(Boolean).length;
+
+  // Toggle colonne
+  const toggleColonne = (id: string) => {
+    setColonnes((prev) =>
+      prev.map((col) =>
+        col.id === id && !col.obligatoire ? { ...col, visible: !col.visible } : col
+      )
+    );
+  };
+
+  // Colonnes visibles
+  const colonnesVisibles = colonnes.filter((col) => col.visible);
 
   // Ouvrir la modale d'édition
   const ouvrirEdition = (ticket: Ticket) => {
@@ -207,9 +241,9 @@ export default function ListeTickets() {
       </header>
 
       {/* ═══════════════════════════════════════════════════════════════════
-          BARRE D'OUTILS
+          BARRE DISPLAY
       ═══════════════════════════════════════════════════════════════════ */}
-      <div className="flex items-center justify-between border-b border-[var(--border)] px-6 py-3">
+      <div className="flex items-center justify-between border-b border-[var(--border)] bg-[var(--card)] px-6 py-3">
         {/* Gauche : Recherche + Filtres */}
         <div className="flex items-center gap-3">
           <div className="relative">
@@ -226,7 +260,7 @@ export default function ListeTickets() {
           <button
             onClick={() => setFiltresOuverts(!filtresOuverts)}
             className={`flex items-center gap-2 rounded-lg border px-3 py-2 text-sm font-medium transition-colors ${
-              nombreFiltresActifs > 0
+              filtresOuverts || nombreFiltresActifs > 0
                 ? 'border-[var(--primary)] bg-[var(--primary)]/10 text-[var(--primary)]'
                 : 'border-[var(--border)] hover:bg-[var(--border)]'
             }`}
@@ -240,19 +274,54 @@ export default function ListeTickets() {
             )}
             <ChevronDown className={`h-4 w-4 transition-transform ${filtresOuverts ? 'rotate-180' : ''}`} />
           </button>
-
-          {nombreFiltresActifs > 0 && (
-            <button
-              onClick={reinitialiserFiltres}
-              className="text-sm text-[var(--muted)] hover:text-[var(--foreground)]"
-            >
-              Réinitialiser
-            </button>
-          )}
         </div>
 
-        {/* Droite : Toggle vue */}
-        <div className="flex items-center rounded-lg border border-[var(--border)] p-1">
+        {/* Droite : Colonnes + Vue */}
+        <div className="flex items-center gap-3">
+          {/* Sélecteur de colonnes (uniquement en vue liste) */}
+          {vue === 'liste' && (
+            <div className="relative">
+              <button
+                onClick={() => setColonnesOuvertes(!colonnesOuvertes)}
+                className={`flex items-center gap-2 rounded-lg border px-3 py-2 text-sm font-medium transition-colors ${
+                  colonnesOuvertes
+                    ? 'border-[var(--primary)] bg-[var(--primary)]/10 text-[var(--primary)]'
+                    : 'border-[var(--border)] hover:bg-[var(--border)]'
+                }`}
+              >
+                <Columns className="h-4 w-4" />
+                Colonnes
+                <ChevronDown className={`h-4 w-4 transition-transform ${colonnesOuvertes ? 'rotate-180' : ''}`} />
+              </button>
+
+              {/* Dropdown colonnes */}
+              {colonnesOuvertes && (
+                <div className="absolute right-0 top-full z-20 mt-2 w-56 rounded-lg border border-[var(--border)] bg-[var(--background)] p-2 shadow-lg animate-slide-down">
+                  <p className="mb-2 px-2 text-xs font-medium text-[var(--muted)]">Colonnes visibles</p>
+                  {colonnes.map((col) => (
+                    <label
+                      key={col.id}
+                      className={`flex cursor-pointer items-center gap-2 rounded-lg px-2 py-1.5 text-sm transition-colors hover:bg-[var(--border)] ${
+                        col.obligatoire ? 'opacity-50' : ''
+                      }`}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={col.visible}
+                        disabled={col.obligatoire}
+                        onChange={() => toggleColonne(col.id)}
+                        className="h-4 w-4 rounded border-[var(--border)] text-[var(--primary)] focus:ring-[var(--primary)]"
+                      />
+                      {col.label}
+                    </label>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Toggle Vue */}
+          <div className="flex rounded-lg border border-[var(--border)] p-1">
           <button
             onClick={() => setVue('liste')}
             className={`flex items-center gap-2 rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${
@@ -275,13 +344,14 @@ export default function ListeTickets() {
             <LayoutGrid className="h-4 w-4" />
             Kanban
           </button>
+          </div>
         </div>
       </div>
 
       {/* Panneau de filtres (collapsible) */}
       {filtresOuverts && (
-        <div className="border-b border-[var(--border)] bg-[var(--card)] px-6 py-4">
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="animate-slide-down border-b border-[var(--border)] bg-[var(--card)] px-6 py-4">
+          <div className="flex flex-wrap items-end gap-4">
             {/* Filtre Statut */}
             <div>
               <label className="mb-1 block text-xs font-medium text-[var(--muted)]">Statut</label>
@@ -341,6 +411,17 @@ export default function ListeTickets() {
                 ))}
               </select>
             </div>
+
+            {/* Bouton réinitialiser */}
+            {nombreFiltresActifs > 0 && (
+              <button
+                onClick={reinitialiserFiltres}
+                className="flex items-center gap-1 rounded-lg border border-[var(--border)] px-3 py-2 text-sm text-[var(--muted)] transition-colors hover:bg-[var(--border)] hover:text-[var(--foreground)]"
+              >
+                <X className="h-4 w-4" />
+                Réinitialiser
+              </button>
+            )}
           </div>
         </div>
       )}
@@ -370,70 +451,58 @@ export default function ListeTickets() {
               <table className="w-full">
                 <thead>
                   <tr className="border-b border-[var(--border)] bg-[var(--card)]">
-                    <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-[var(--muted)]">
-                      Sujet
-                    </th>
-                    <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-[var(--muted)]">
-                      Client
-                    </th>
-                    <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-[var(--muted)]">
-                      Type
-                    </th>
-                    <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-[var(--muted)]">
-                      Priorité
-                    </th>
-                    <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-[var(--muted)]">
-                      Statut
-                    </th>
-                    <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-[var(--muted)]">
-                      Date
-                    </th>
+                    {colonnesVisibles.map((col) => (
+                      <th key={col.id} className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-[var(--muted)]">
+                        {col.label}
+                      </th>
+                    ))}
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-[var(--border)]">
                   {ticketsFiltres.map((ticket) => (
-                    <tr
-                      key={ticket.id}
-                      className="transition-colors hover:bg-[var(--card)]"
-                    >
-                      <td className="px-4 py-3">
-                        <button
-                          onClick={() => ouvrirEdition(ticket)}
-                          className="font-medium text-[var(--foreground)] hover:text-[var(--primary)] hover:underline"
-                        >
-                          {ticket.sujet}
-                        </button>
-                      </td>
-                      <td className="px-4 py-3">
-                        {ticket.client ? (
-                          <Link
-                            href={`/clients/${ticket.clientId}`}
-                            className="text-sm text-[var(--primary)] hover:underline"
-                          >
-                            {ticket.client.nom}
-                          </Link>
-                        ) : (
-                          <span className="text-sm text-[var(--muted)]">—</span>
-                        )}
-                      </td>
-                      <td className="px-4 py-3">
-                        <span className={`inline-flex rounded-full px-2.5 py-1 text-xs font-medium ${badgeType[ticket.typeTicket] || ''}`}>
-                          {ticket.typeTicket.replace('_', ' ')}
-                        </span>
-                      </td>
-                      <td className="px-4 py-3">
-                        <span className={`inline-flex rounded-full px-2.5 py-1 text-xs font-medium ${badgePriorite[ticket.priorite] || ''}`}>
-                          {ticket.priorite}
-                        </span>
-                      </td>
-                      <td className="px-4 py-3">
-                        <span className={`inline-flex rounded-full px-2.5 py-1 text-xs font-medium ${badgeStatut[ticket.statutTicket] || ''}`}>
-                          {ticket.statutTicket.replace('_', ' ')}
-                        </span>
-                      </td>
-                      <td className="px-4 py-3 text-sm text-[var(--muted)]">
-                        {formaterDate(ticket.dateCreation)}
-                      </td>
+                    <tr key={ticket.id} className="transition-colors hover:bg-[var(--card)]">
+                      {colonnesVisibles.map((col) => (
+                        <td key={col.id} className="px-4 py-3">
+                          {col.id === 'sujet' && (
+                            <button
+                              onClick={() => ouvrirEdition(ticket)}
+                              className="font-medium text-[var(--foreground)] hover:text-[var(--primary)] hover:underline"
+                            >
+                              {ticket.sujet}
+                            </button>
+                          )}
+                          {col.id === 'client' && (
+                            ticket.client ? (
+                              <Link href={`/clients/${ticket.clientId}`} className="text-sm text-[var(--primary)] hover:underline">
+                                {ticket.client.nom}
+                              </Link>
+                            ) : (
+                              <span className="text-sm text-[var(--muted)]">—</span>
+                            )
+                          )}
+                          {col.id === 'type' && (
+                            <span className={`inline-flex rounded-full px-2.5 py-1 text-xs font-medium ${badgeType[ticket.typeTicket] || ''}`}>
+                              {ticket.typeTicket.replace('_', ' ')}
+                            </span>
+                          )}
+                          {col.id === 'priorite' && (
+                            <span className={`inline-flex rounded-full px-2.5 py-1 text-xs font-medium ${badgePriorite[ticket.priorite] || ''}`}>
+                              {ticket.priorite}
+                            </span>
+                          )}
+                          {col.id === 'statut' && (
+                            <span className={`inline-flex rounded-full px-2.5 py-1 text-xs font-medium ${badgeStatut[ticket.statutTicket] || ''}`}>
+                              {ticket.statutTicket.replace('_', ' ')}
+                            </span>
+                          )}
+                          {col.id === 'dateCreation' && (
+                            <span className="text-sm text-[var(--muted)]">{formaterDate(ticket.dateCreation)}</span>
+                          )}
+                          {col.id === 'assigne' && (
+                            <span className="text-sm text-[var(--muted)]">—</span>
+                          )}
+                        </td>
+                      ))}
                     </tr>
                   ))}
                 </tbody>
@@ -508,6 +577,11 @@ export default function ListeTickets() {
             </div>
           ))}
         </div>
+      )}
+
+      {/* Fermer dropdown colonnes si clic ailleurs */}
+      {colonnesOuvertes && (
+        <div className="fixed inset-0 z-10" onClick={() => setColonnesOuvertes(false)} />
       )}
 
       {/* Modale de création */}

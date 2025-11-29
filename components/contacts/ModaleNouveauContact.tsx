@@ -56,10 +56,10 @@ export function ModaleNouveauContact({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center">
       {/* Overlay */}
-      <div className="absolute inset-0 bg-black/50" onClick={onFermer} />
+      <div className="modal-overlay absolute inset-0 bg-black/50" onClick={onFermer} />
 
       {/* Modale */}
-      <div className="relative z-10 w-full max-w-md rounded-lg border border-[var(--border)] bg-[var(--background)] shadow-xl">
+      <div className="modal-content relative z-10 w-full max-w-md rounded-lg border border-[var(--border)] bg-[var(--background)] shadow-xl">
         {/* Header */}
         <div className="flex items-center justify-between border-b border-[var(--border)] px-6 py-4">
           <h2 className="text-lg font-semibold">Nouveau contact</h2>

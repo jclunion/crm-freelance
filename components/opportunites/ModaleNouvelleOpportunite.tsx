@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { X, Loader2 } from 'lucide-react';
 import { useCreerOpportunite } from '@/lib/hooks';
 import { recupererClients, type ClientAvecStats } from '@/lib/api';
+import { useToast } from '@/components/ui/Toast';
 
 interface ModaleNouvelleOpportuniteProps {
   ouverte: boolean;
@@ -24,6 +25,7 @@ export function ModaleNouvelleOpportunite({
   const [etapePipeline, setEtapePipeline] = useState<'lead' | 'qualifie' | 'proposition_envoyee' | 'negociation'>('lead');
 
   const creerOpportuniteMutation = useCreerOpportunite();
+  const toast = useToast();
 
   // Charger les clients au montage
   useEffect(() => {
@@ -59,10 +61,12 @@ export function ModaleNouvelleOpportunite({
         etapePipeline,
       });
 
+      toast.success('Opportunité créée', `${titre} a été ajoutée au pipeline`);
       reinitialiserFormulaire();
       onFermer();
     } catch (erreur) {
       console.error('Erreur création opportunité:', erreur);
+      toast.error('Erreur', 'Impossible de créer l\'opportunité');
     }
   };
 
@@ -71,10 +75,10 @@ export function ModaleNouvelleOpportunite({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center">
       {/* Overlay */}
-      <div className="absolute inset-0 bg-black/50" onClick={onFermer} />
+      <div className="modal-overlay absolute inset-0 bg-black/50" onClick={onFermer} />
 
       {/* Modale */}
-      <div className="relative z-10 w-full max-w-lg rounded-lg border border-[var(--border)] bg-[var(--background)] shadow-xl">
+      <div className="modal-content relative z-10 w-full max-w-lg rounded-lg border border-[var(--border)] bg-[var(--background)] shadow-xl">
         {/* Header */}
         <div className="flex items-center justify-between border-b border-[var(--border)] px-6 py-4">
           <h2 className="text-lg font-semibold">Nouvelle opportunité</h2>

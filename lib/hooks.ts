@@ -24,6 +24,7 @@ import {
   type ContactCreation,
   type OpportuniteCreation,
   type TicketCreation,
+  type Opportunite,
 } from './api';
 
 // --- Hooks Clients ---
@@ -155,7 +156,33 @@ export function useMettreAJourOpportunite() {
       id: string;
       donnees: Partial<Omit<OpportuniteCreation, 'clientId'>>;
     }) => mettreAJourOpportunite(id, donnees),
-    onSuccess: () => {
+    // Mise à jour optimiste pour éviter le flash lors du drag & drop
+    onMutate: async ({ id, donnees }) => {
+      // Annuler les requêtes en cours
+      await queryClient.cancelQueries({ queryKey: ['opportunites'] });
+
+      // Sauvegarder l'état précédent
+      const previousOpportunites = queryClient.getQueryData(['opportunites']);
+
+      // Mettre à jour le cache de manière optimiste
+      queryClient.setQueryData(['opportunites'], (old: Opportunite[] | undefined) => {
+        if (!old) return old;
+        return old.map((opp) =>
+          opp.id === id ? { ...opp, ...donnees } : opp
+        );
+      });
+
+      // Retourner le contexte avec l'état précédent
+      return { previousOpportunites };
+    },
+    onError: (_err, _variables, context) => {
+      // En cas d'erreur, restaurer l'état précédent
+      if (context?.previousOpportunites) {
+        queryClient.setQueryData(['opportunites'], context.previousOpportunites);
+      }
+    },
+    onSettled: () => {
+      // Toujours revalider après la mutation
       queryClient.invalidateQueries({ queryKey: ['opportunites'] });
       queryClient.invalidateQueries({ queryKey: ['clients'] });
     },

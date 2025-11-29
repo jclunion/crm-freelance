@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { X, Loader2, Trash2 } from 'lucide-react';
 import { useMettreAJourTicket, useSupprimerTicket, useClients } from '@/lib/hooks';
 import type { Ticket } from '@/lib/api';
+import { useToast } from '@/components/ui/Toast';
 
 interface ModaleEditionTicketProps {
   ouverte: boolean;
@@ -27,6 +28,7 @@ export function ModaleEditionTicket({
 
   const mettreAJourMutation = useMettreAJourTicket();
   const supprimerMutation = useSupprimerTicket();
+  const toast = useToast();
 
   // Initialiser le formulaire avec les données du ticket
   useEffect(() => {
@@ -56,9 +58,11 @@ export function ModaleEditionTicket({
           statutTicket,
         },
       });
+      toast.success('Ticket modifié', `${sujet} a été mis à jour`);
       onFermer();
     } catch (erreur) {
       console.error('Erreur mise à jour ticket:', erreur);
+      toast.error('Erreur', 'Impossible de modifier le ticket');
     }
   };
 
@@ -67,9 +71,11 @@ export function ModaleEditionTicket({
 
     try {
       await supprimerMutation.mutateAsync(ticket.id);
+      toast.success('Ticket supprimé', `${sujet} a été supprimé`);
       onFermer();
     } catch (erreur) {
       console.error('Erreur suppression ticket:', erreur);
+      toast.error('Erreur', 'Impossible de supprimer le ticket');
     }
   };
 
@@ -78,10 +84,10 @@ export function ModaleEditionTicket({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center">
       {/* Overlay */}
-      <div className="absolute inset-0 bg-black/50" onClick={onFermer} />
+      <div className="modal-overlay absolute inset-0 bg-black/50" onClick={onFermer} />
 
       {/* Modale */}
-      <div className="relative z-10 w-full max-w-lg rounded-lg border border-[var(--border)] bg-[var(--background)] shadow-xl">
+      <div className="modal-content relative z-10 w-full max-w-lg rounded-lg border border-[var(--border)] bg-[var(--background)] shadow-xl">
         {/* Header */}
         <div className="flex items-center justify-between border-b border-[var(--border)] px-6 py-4">
           <h2 className="text-lg font-semibold">Modifier le ticket</h2>

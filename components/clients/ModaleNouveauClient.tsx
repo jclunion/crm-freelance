@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { X, Loader2 } from 'lucide-react';
 import { useCreerClient } from '@/lib/hooks';
+import { useToast } from '@/components/ui/Toast';
 
 interface ModaleNouveauClientProps {
   ouverte: boolean;
@@ -18,6 +19,7 @@ export function ModaleNouveauClient({ ouverte, onFermer }: ModaleNouveauClientPr
   const [noteInterne, setNoteInterne] = useState('');
 
   const creerClientMutation = useCreerClient();
+  const toast = useToast();
 
   const reinitialiserFormulaire = () => {
     setNom('');
@@ -41,10 +43,12 @@ export function ModaleNouveauClient({ ouverte, onFermer }: ModaleNouveauClientPr
         noteInterne: noteInterne || undefined,
       });
 
+      toast.success('Client créé', `${nom} a été ajouté avec succès`);
       reinitialiserFormulaire();
       onFermer();
     } catch (erreur) {
       console.error('Erreur création client:', erreur);
+      toast.error('Erreur', 'Impossible de créer le client');
     }
   };
 
@@ -54,12 +58,12 @@ export function ModaleNouveauClient({ ouverte, onFermer }: ModaleNouveauClientPr
     <div className="fixed inset-0 z-50 flex items-center justify-center">
       {/* Overlay */}
       <div
-        className="absolute inset-0 bg-black/50"
+        className="modal-overlay absolute inset-0 bg-black/50"
         onClick={onFermer}
       />
 
       {/* Modale */}
-      <div className="relative z-10 w-full max-w-lg rounded-lg border border-[var(--border)] bg-[var(--background)] shadow-xl">
+      <div className="modal-content relative z-10 w-full max-w-lg rounded-lg border border-[var(--border)] bg-[var(--background)] shadow-xl">
         {/* Header */}
         <div className="flex items-center justify-between border-b border-[var(--border)] px-6 py-4">
           <h2 className="text-lg font-semibold">Nouveau client</h2>
