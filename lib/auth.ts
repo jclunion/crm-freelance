@@ -1,8 +1,8 @@
 import { NextAuthOptions } from 'next-auth';
-import { PrismaAdapter } from '@auth/prisma-adapter';
+//import { PrismaAdapter } from '@auth/prisma-adapter';
 import CredentialsProvider from 'next-auth/providers/credentials';
 import bcrypt from 'bcryptjs';
-import { prisma } from './prisma';
+//import { prisma } from './prisma';
 
 export const authOptions: NextAuthOptions = {
   // Désactiver l'adapter pendant le build
