@@ -6,7 +6,7 @@ import { prisma } from './prisma';
 
 export const authOptions: NextAuthOptions = {
   // Désactiver l'adapter pendant le build
-  adapter: process.env.SKIP_ENV_VALIDATION ? undefined : PrismaAdapter(prisma) as NextAuthOptions['adapter'],
+  //adapter: process.env.SKIP_ENV_VALIDATION ? undefined : PrismaAdapter(prisma) as NextAuthOptions['adapter'],
   providers: [
     CredentialsProvider({
       name: 'Identifiants',
