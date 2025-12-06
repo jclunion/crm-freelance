@@ -95,6 +95,9 @@ model Client {
   tickets            Ticket[]
   evenements         EvenementTimeline[]
 
+  // Accès portail client (lien partagé)
+  tokenPortail       String?
+
   dateCreation       DateTime @default(now())
   dateMiseAJour      DateTime @updatedAt
 
@@ -137,6 +140,11 @@ model Opportunite {
   dateCreation         DateTime @default(now())
   dateMiseAJour        DateTime @updatedAt
 
+  // Paiement lié à l'opportunité (MVP simple : un seul paiement Stripe)
+  statutPaiement       String   @default("en_attente") // en_attente, paye
+  urlPaiement          String?
+  stripeSessionId      String?
+
   @@map("opportunites")
 }
 
@@ -168,7 +176,7 @@ model EvenementTimeline {
   clientId         String
   client           Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
 
-  typeEvenement    String   // opportunite_creee, opportunite_etape_changee, ticket_cree, ticket_statut_change, note_client
+  typeEvenement    String   // opportunite_creee, opportunite_etape_changee, ticket_cree, ticket_statut_change, note_client, email_client, paiement_recu
   referenceId      String?  // id de l'opportunité ou du ticket
   descriptionTexte String
 

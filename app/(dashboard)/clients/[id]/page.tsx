@@ -18,16 +18,25 @@ import {
   TrendingUp,
   MoreHorizontal,
   Building2,
+  Link as LinkIcon,
+  Copy,
+  Check,
+  ExternalLink,
+  RefreshCw,
 } from 'lucide-react';
 import { useClient, useSupprimerClient } from '@/lib/hooks';
 import { formaterDate, formaterMontant } from '@/lib/utils';
+import { genererLienPortail, revoquerPortail, type Opportunite, type Ticket } from '@/lib/api';
 import { ModaleNouveauContact } from '@/components/contacts/ModaleNouveauContact';
 import { ModaleNouvelleOpportunite } from '@/components/opportunites/ModaleNouvelleOpportunite';
 import { ModaleEditionOpportunite } from '@/components/opportunites/ModaleEditionOpportunite';
 import { ModaleNouveauTicket } from '@/components/tickets/ModaleNouveauTicket';
 import { ModaleEditionTicket } from '@/components/tickets/ModaleEditionTicket';
 import { ModaleEditionClient } from '@/components/clients/ModaleEditionClient';
-import type { Opportunite, Ticket } from '@/lib/api';
+import { ModaleNouvelEmail } from '@/components/emails/ModaleNouvelEmail';
+import { ModaleEditionEmail } from '@/components/emails/ModaleEditionEmail';
+import { useToast } from '@/components/ui/Toast';
+import type { EvenementTimeline } from '@/lib/api';
 
 // Badges pour les étapes du pipeline
 const badgeEtape: Record<string, string> = {
@@ -76,8 +85,9 @@ interface PageProps {
 
 export default function FicheClient({ params }: PageProps) {
   const router = useRouter();
-  const { data: client, isLoading, error } = useClient(params.id);
+  const { data: client, isLoading, error, refetch } = useClient(params.id);
   const supprimerMutation = useSupprimerClient();
+  const toast = useToast();
 
   const [ongletActif, setOngletActif] = useState<Onglet>('apercu');
   const [menuActionsOuvert, setMenuActionsOuvert] = useState(false);
@@ -90,6 +100,25 @@ export default function FicheClient({ params }: PageProps) {
   const [ticketSelectionne, setTicketSelectionne] = useState<Ticket | null>(null);
   const [modaleEditionOuverte, setModaleEditionOuverte] = useState(false);
 
+  // État pour le portail client
+  const [generationPortailEnCours, setGenerationPortailEnCours] = useState(false);
+  const [lienPortailCopie, setLienPortailCopie] = useState(false);
+
+  // État pour la modale email
+  const [modaleEmailOuverte, setModaleEmailOuverte] = useState(false);
+  const [modaleEditionEmailOuverte, setModaleEditionEmailOuverte] = useState(false);
+  const [emailSelectionne, setEmailSelectionne] = useState<EvenementTimeline | null>(null);
+
+  const ouvrirEditionEmail = (evt: EvenementTimeline) => {
+    setEmailSelectionne(evt);
+    setModaleEditionEmailOuverte(true);
+  };
+
+  const fermerEditionEmail = () => {
+    setModaleEditionEmailOuverte(false);
+    setEmailSelectionne(null);
+  };
+
   const gererSuppression = async () => {
     if (!confirm('Êtes-vous sûr de vouloir supprimer ce client ?')) return;
     try {
@@ -97,6 +126,52 @@ export default function FicheClient({ params }: PageProps) {
       router.push('/clients');
     } catch (erreur) {
       console.error('Erreur suppression:', erreur);
+    }
+  };
+
+  // Générer le lien du portail client
+  const gererGenerationPortail = async () => {
+    setGenerationPortailEnCours(true);
+    try {
+      const resultat = await genererLienPortail(params.id);
+      toast.success('Lien portail généré', 'Le client peut maintenant accéder à son portail');
+      refetch();
+      // Copier automatiquement le lien
+      await navigator.clipboard.writeText(resultat.urlPortail);
+      setLienPortailCopie(true);
+      setTimeout(() => setLienPortailCopie(false), 2000);
+    } catch (erreur) {
+      console.error('Erreur génération portail:', erreur);
+      toast.error('Erreur', 'Impossible de générer le lien du portail');
+    } finally {
+      setGenerationPortailEnCours(false);
+    }
+  };
+
+  // Copier le lien du portail
+  const copierLienPortail = async () => {
+    if (!client?.tokenPortail) return;
+    const url = `${window.location.origin}/portail/${client.tokenPortail}`;
+    try {
+      await navigator.clipboard.writeText(url);
+      setLienPortailCopie(true);
+      toast.success('Lien copié', 'Le lien du portail a été copié');
+      setTimeout(() => setLienPortailCopie(false), 2000);
+    } catch (erreur) {
+      toast.error('Erreur', 'Impossible de copier le lien');
+    }
+  };
+
+  // Révoquer l'accès au portail
+  const gererRevocationPortail = async () => {
+    if (!confirm('Révoquer l\'accès au portail pour ce client ?')) return;
+    try {
+      await revoquerPortail(params.id);
+      toast.success('Accès révoqué', 'Le client ne peut plus accéder au portail');
+      refetch();
+    } catch (erreur) {
+      console.error('Erreur révocation portail:', erreur);
+      toast.error('Erreur', 'Impossible de révoquer l\'accès');
     }
   };
 
@@ -252,6 +327,16 @@ export default function FicheClient({ params }: PageProps) {
                       <Users className="h-4 w-4" />
                       Ajouter un contact
                     </button>
+                    <button
+                      onClick={() => {
+                        setModaleEmailOuverte(true);
+                        setMenuActionsOuvert(false);
+                      }}
+                      className="flex w-full items-center gap-2 px-4 py-2 text-sm hover:bg-[var(--border)]"
+                    >
+                      <Mail className="h-4 w-4" />
+                      Consigner un email
+                    </button>
                     <hr className="my-1 border-[var(--border)]" />
                     <button
                       onClick={() => {
@@ -340,6 +425,85 @@ export default function FicheClient({ params }: PageProps) {
               </p>
             </section>
           )}
+
+          {/* Bloc Portail Client */}
+          <section className="mb-6">
+            <h3 className="mb-3 text-xs font-semibold uppercase tracking-wider text-[var(--muted)]">
+              Portail client
+            </h3>
+            <div className="rounded-lg bg-[var(--background)] p-3">
+              {client.tokenPortail ? (
+                <div className="space-y-3">
+                  <div className="flex items-center gap-2">
+                    <LinkIcon className="h-4 w-4 text-green-500" />
+                    <span className="text-sm text-green-600 dark:text-green-400">Accès activé</span>
+                  </div>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={copierLienPortail}
+                      className="flex flex-1 items-center justify-center gap-2 rounded-lg border border-[var(--border)] px-3 py-2 text-xs font-medium transition-colors hover:bg-[var(--border)]"
+                    >
+                      {lienPortailCopie ? (
+                        <>
+                          <Check className="h-3 w-3 text-green-500" />
+                          Copié !
+                        </>
+                      ) : (
+                        <>
+                          <Copy className="h-3 w-3" />
+                          Copier le lien
+                        </>
+                      )}
+                    </button>
+                    <a
+                      href={`/portail/${client.tokenPortail}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex items-center justify-center rounded-lg border border-[var(--border)] px-3 py-2 text-xs transition-colors hover:bg-[var(--border)]"
+                      title="Ouvrir le portail"
+                    >
+                      <ExternalLink className="h-3 w-3" />
+                    </a>
+                  </div>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={gererGenerationPortail}
+                      disabled={generationPortailEnCours}
+                      className="flex flex-1 items-center justify-center gap-2 rounded-lg border border-[var(--border)] px-3 py-1.5 text-xs text-[var(--muted)] transition-colors hover:bg-[var(--border)] disabled:opacity-50"
+                    >
+                      <RefreshCw className={`h-3 w-3 ${generationPortailEnCours ? 'animate-spin' : ''}`} />
+                      Régénérer
+                    </button>
+                    <button
+                      onClick={gererRevocationPortail}
+                      className="flex flex-1 items-center justify-center gap-2 rounded-lg border border-red-200 px-3 py-1.5 text-xs text-red-600 transition-colors hover:bg-red-50 dark:border-red-800 dark:hover:bg-red-900/20"
+                    >
+                      <Trash2 className="h-3 w-3" />
+                      Révoquer
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  <p className="text-sm text-[var(--muted)]">
+                    Aucun accès portail configuré
+                  </p>
+                  <button
+                    onClick={gererGenerationPortail}
+                    disabled={generationPortailEnCours}
+                    className="flex w-full items-center justify-center gap-2 rounded-lg bg-[var(--primary)] px-4 py-2 text-sm font-medium text-[var(--primary-foreground)] transition-opacity hover:opacity-90 disabled:opacity-50"
+                  >
+                    {generationPortailEnCours ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <LinkIcon className="h-4 w-4" />
+                    )}
+                    Générer un lien portail
+                  </button>
+                </div>
+              )}
+            </div>
+          </section>
 
           {/* Bloc Contacts */}
           <section>
@@ -600,21 +764,69 @@ export default function FicheClient({ params }: PageProps) {
             {/* ═══ ONGLET TIMELINE ═══ */}
             {ongletActif === 'timeline' && (
               <div className="space-y-4">
+                {/* Bouton ajouter email */}
+                <div className="flex justify-end">
+                  <button
+                    onClick={() => setModaleEmailOuverte(true)}
+                    className="flex items-center gap-2 rounded-lg border border-[var(--border)] px-4 py-2 text-sm font-medium transition-colors hover:bg-[var(--border)]"
+                  >
+                    <Mail className="h-4 w-4" />
+                    Consigner un email
+                  </button>
+                </div>
+
                 {client.evenements && client.evenements.length > 0 ? (
-                  client.evenements.map((evt) => (
-                    <div key={evt.id} className="flex gap-4">
-                      <div className="flex flex-col items-center">
-                        <div className="h-3 w-3 rounded-full bg-[var(--primary)]" />
-                        <div className="w-0.5 flex-1 bg-[var(--border)]" />
-                      </div>
+                  client.evenements.map((evt) => {
+                    // Déterminer la couleur selon le type
+                    const estEmail = evt.typeEvenement === 'email_client';
+                    const estPaiement = evt.typeEvenement === 'paiement_recu';
+                    const estTicket = evt.typeEvenement?.startsWith('ticket');
+
+                    let couleurPoint = 'bg-[var(--primary)]';
+                    if (estEmail) couleurPoint = 'bg-blue-500';
+                    if (estPaiement) couleurPoint = 'bg-green-500';
+                    if (estTicket) couleurPoint = 'bg-orange-500';
+
+                    const ContenuEvenement = (
                       <div className="flex-1 pb-6">
-                        <p className="text-xs text-[var(--muted)]">
-                          {formaterDate(evt.dateEvenement)}
-                        </p>
-                        <p className="mt-1">{evt.descriptionTexte}</p>
+                        <div className="flex items-center gap-2">
+                          <p className="text-xs text-[var(--muted)]">
+                            {formaterDate(evt.dateEvenement)}
+                          </p>
+                          {estEmail && (
+                            <span className="rounded-full bg-blue-100 px-2 py-0.5 text-xs font-medium text-blue-700 dark:bg-blue-900 dark:text-blue-300">
+                              Email
+                            </span>
+                          )}
+                          {estPaiement && (
+                            <span className="rounded-full bg-green-100 px-2 py-0.5 text-xs font-medium text-green-700 dark:bg-green-900 dark:text-green-300">
+                              Paiement
+                            </span>
+                          )}
+                        </div>
+                        <p className="mt-1 whitespace-pre-line">{evt.descriptionTexte}</p>
                       </div>
-                    </div>
-                  ))
+                    );
+
+                    return (
+                      <div key={evt.id} className="flex gap-4">
+                        <div className="flex flex-col items-center">
+                          <div className={`h-3 w-3 rounded-full ${couleurPoint}`} />
+                          <div className="w-0.5 flex-1 bg-[var(--border)]" />
+                        </div>
+                        {estEmail ? (
+                          <button
+                            onClick={() => ouvrirEditionEmail(evt)}
+                            className="flex-1 rounded-lg p-2 -ml-2 text-left transition-colors hover:bg-[var(--card)]"
+                          >
+                            {ContenuEvenement}
+                          </button>
+                        ) : (
+                          ContenuEvenement
+                        )}
+                      </div>
+                    );
+                  })
                 ) : (
                   <div className="flex flex-col items-center justify-center py-12">
                     <Clock className="h-12 w-12 text-[var(--muted)]" />
@@ -659,6 +871,18 @@ export default function FicheClient({ params }: PageProps) {
         ouverte={modaleEditionTicketOuverte}
         onFermer={fermerEditionTicket}
         ticket={ticketSelectionne}
+      />
+      <ModaleNouvelEmail
+        ouverte={modaleEmailOuverte}
+        onFermer={() => setModaleEmailOuverte(false)}
+        clientId={params.id}
+        clientNom={client.nom}
+      />
+      <ModaleEditionEmail
+        ouverte={modaleEditionEmailOuverte}
+        onFermer={fermerEditionEmail}
+        clientId={params.id}
+        evenement={emailSelectionne}
       />
     </div>
   );

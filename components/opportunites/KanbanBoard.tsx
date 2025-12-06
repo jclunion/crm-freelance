@@ -13,7 +13,7 @@ import {
   useDraggable,
 } from '@dnd-kit/core';
 import { CSS } from '@dnd-kit/utilities';
-import { GripVertical } from 'lucide-react';
+import { GripVertical, CreditCard, CheckCircle } from 'lucide-react';
 import type { Opportunite } from '@/lib/api';
 
 interface EtapePipeline {
@@ -80,11 +80,27 @@ function CarteOpportunite({
             <p className="text-lg font-semibold text-[var(--primary)]">
               {opportunite.montantEstime?.toLocaleString('fr-FR') || 0} €
             </p>
-            {opportunite.probabilite && (
-              <span className="rounded-full bg-[var(--border)] px-2 py-0.5 text-xs">
-                {opportunite.probabilite}%
-              </span>
-            )}
+            <div className="flex items-center gap-1.5">
+              {/* Badge paiement pour les opportunités gagnées */}
+              {opportunite.etapePipeline === 'gagne' && (
+                opportunite.statutPaiement === 'paye' ? (
+                  <span className="flex items-center gap-1 rounded-full bg-green-100 px-2 py-0.5 text-xs font-medium text-green-700 dark:bg-green-900/30 dark:text-green-400">
+                    <CheckCircle className="h-3 w-3" />
+                    Payé
+                  </span>
+                ) : opportunite.urlPaiement ? (
+                  <span className="flex items-center gap-1 rounded-full bg-yellow-100 px-2 py-0.5 text-xs font-medium text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400">
+                    <CreditCard className="h-3 w-3" />
+                    En attente
+                  </span>
+                ) : null
+              )}
+              {opportunite.probabilite && opportunite.etapePipeline !== 'gagne' && (
+                <span className="rounded-full bg-[var(--border)] px-2 py-0.5 text-xs">
+                  {opportunite.probabilite}%
+                </span>
+              )}
+            </div>
           </div>
         </div>
       </div>

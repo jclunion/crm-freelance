@@ -1,0 +1,119 @@
+# BMM Workflow Status - CRM Freelance
+# Généré le: 2025-12-05
+# Track: BMad Method (Brownfield)
+
+generated: "2025-12-05T19:01:00.000Z"
+project: "CRM Freelance"
+project_type: "web"
+selected_track: "method"
+field_type: "brownfield"
+workflow_path: "method-brownfield.yaml"
+
+# Prérequis
+prerequisite:
+  document-project:
+    status: "docs/index.md"
+    agent: "analyst"
+    completed: "2025-12-04"
+    note: "Documentation complète générée"
+
+# Phase 0 - Discovery (Optionnel)
+phase_0_discovery:
+  brainstorm-project:
+    status: "required"
+    agent: "analyst"
+    command: "/brainstorm-project"
+    note: "Sélectionné par l'utilisateur"
+
+  research:
+    status: "skipped"
+    agent: "analyst"
+
+  product-brief:
+    status: "skipped"
+    agent: "analyst"
+
+# Phase 1 - Planning
+phase_1_planning:
+  prd:
+    status: "required"
+    agent: "pm"
+    command: "/prd"
+    output: "docs/prd.md"
+    note: "PRD focalisé sur les nouvelles fonctionnalités"
+
+  validate-prd:
+    status: "optional"
+    agent: "pm"
+    command: "/validate-prd"
+
+  create-design:
+    status: "conditional"
+    condition: "if_has_ui"
+    agent: "ux-designer"
+    command: "/create-ux-design"
+    note: "UI existante documentée dans docs/UX-DESIGN.md"
+
+# Phase 2 - Solutioning
+phase_2_solutioning:
+  create-architecture:
+    status: "recommended"
+    agent: "architect"
+    command: "/architecture"
+    output: "docs/solution-architecture.md"
+    note: "Architecture existante dans docs/architecture.md - créer design de solution spécifique"
+
+  create-epics-and-stories:
+    status: "required"
+    agent: "pm"
+    command: "/create-epics-and-stories"
+    output: "docs/epics/"
+    note: "Décomposer le PRD en epics et stories implémentables"
+
+  test-design:
+    status: "recommended"
+    agent: "tea"
+    command: "/test-design"
+    note: "Évaluation de la testabilité au niveau système"
+
+  validate-architecture:
+    status: "optional"
+    agent: "architect"
+    command: "/validate-architecture"
+
+  implementation-readiness:
+    status: "required"
+    agent: "architect"
+    command: "/implementation-readiness"
+    note: "Valide la cohésion PRD + UX + Architecture + Epics"
+
+# Phase 3 - Implementation
+phase_3_implementation:
+  sprint-planning:
+    status: "required"
+    agent: "sm"
+    command: "/sprint-planning"
+    output: "docs/sprint-artifacts/sprint-status.yaml"
+    note: "Crée le plan de sprint avec les stories"
+
+# Métadonnées
+next_workflow: "brainstorm-project"
+next_agent: "analyst"
+next_command: "/brainstorm-project"
+
+# Artefacts existants référencés
+existing_artifacts:
+  - path: "docs/index.md"
+    type: "documentation-index"
+  - path: "docs/architecture.md"
+    type: "architecture"
+  - path: "docs/data-models.md"
+    type: "data-models"
+  - path: "docs/api-contracts.md"
+    type: "api-contracts"
+  - path: "docs/component-inventory.md"
+    type: "component-inventory"
+  - path: "docs/UX-DESIGN.md"
+    type: "ux-design"
+  - path: "docs/development-guide.md"
+    type: "development-guide"

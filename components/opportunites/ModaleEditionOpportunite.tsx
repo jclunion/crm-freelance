@@ -1,9 +1,9 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { X, Loader2, Trash2 } from 'lucide-react';
-import { useMettreAJourOpportunite, useSupprimerOpportunite } from '@/lib/hooks';
-import { recupererClients, type ClientAvecStats, type Opportunite } from '@/lib/api';
+import { X, Loader2, Trash2, CreditCard, ExternalLink, Copy, Check } from 'lucide-react';
+import { useMettreAJourOpportunite, useSupprimerOpportunite, useOpportunites } from '@/lib/hooks';
+import { recupererClients, genererLienPaiement, type ClientAvecStats, type Opportunite } from '@/lib/api';
 import { useToast } from '@/components/ui/Toast';
 
 interface ModaleEditionOpportuniteProps {
@@ -30,7 +30,12 @@ export function ModaleEditionOpportunite({
 
   const mettreAJourMutation = useMettreAJourOpportunite();
   const supprimerMutation = useSupprimerOpportunite();
+  const { refetch: refetchOpportunites } = useOpportunites();
   const toast = useToast();
+
+  // État pour le paiement
+  const [generationPaiementEnCours, setGenerationPaiementEnCours] = useState(false);
+  const [lienCopie, setLienCopie] = useState(false);
 
   // Charger les clients au montage
   useEffect(() => {
@@ -93,6 +98,44 @@ export function ModaleEditionOpportunite({
       toast.error('Erreur', 'Impossible de supprimer l\'opportunité');
     }
   };
+
+  // Générer un lien de paiement Stripe
+  const gererGenerationPaiement = async () => {
+    if (!opportunite) return;
+
+    setGenerationPaiementEnCours(true);
+    try {
+      const resultat = await genererLienPaiement(opportunite.id);
+      toast.success('Lien de paiement créé', 'Redirection vers Stripe...');
+      // Fermer la modale et rediriger dans le même onglet
+      onFermer();
+      window.location.href = resultat.urlPaiement;
+    } catch (erreur) {
+      console.error('Erreur génération paiement:', erreur);
+      toast.error('Erreur', erreur instanceof Error ? erreur.message : 'Impossible de générer le lien de paiement');
+      setGenerationPaiementEnCours(false);
+    }
+  };
+
+  // Copier le lien de paiement
+  const copierLienPaiement = async () => {
+    if (!opportunite?.urlPaiement) return;
+
+    try {
+      await navigator.clipboard.writeText(opportunite.urlPaiement);
+      setLienCopie(true);
+      toast.success('Lien copié', 'Le lien de paiement a été copié dans le presse-papier');
+      setTimeout(() => setLienCopie(false), 2000);
+    } catch (erreur) {
+      toast.error('Erreur', 'Impossible de copier le lien');
+    }
+  };
+
+  // Vérifier si on peut générer un paiement
+  const peutGenererPaiement = opportunite?.etapePipeline === 'gagne' 
+    && opportunite?.montantEstime 
+    && opportunite?.montantEstime > 0
+    && opportunite?.statutPaiement !== 'paye';
 
   if (!ouverte || !opportunite) return null;
 
@@ -207,6 +250,92 @@ export function ModaleEditionOpportunite({
                 />
               </div>
             </div>
+
+            {/* Section Paiement Stripe */}
+            {etapePipeline === 'gagne' && (
+              <div className="mt-4 rounded-lg border border-[var(--border)] bg-[var(--card)] p-4">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <CreditCard className="h-5 w-5 text-[var(--muted)]" />
+                    <span className="font-medium">Paiement</span>
+                  </div>
+                  {/* Badge statut paiement */}
+                  {opportunite.statutPaiement === 'paye' ? (
+                    <span className="rounded-full bg-green-100 px-2.5 py-0.5 text-xs font-medium text-green-700 dark:bg-green-900/30 dark:text-green-400">
+                      Payé
+                    </span>
+                  ) : opportunite.urlPaiement ? (
+                    <span className="rounded-full bg-yellow-100 px-2.5 py-0.5 text-xs font-medium text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400">
+                      En attente
+                    </span>
+                  ) : (
+                    <span className="rounded-full bg-gray-100 px-2.5 py-0.5 text-xs font-medium text-gray-600 dark:bg-gray-800 dark:text-gray-400">
+                      Non généré
+                    </span>
+                  )}
+                </div>
+
+                {/* Lien de paiement existant */}
+                {opportunite.urlPaiement && opportunite.statutPaiement !== 'paye' && (
+                  <div className="mt-3 flex items-center gap-2">
+                    <input
+                      type="text"
+                      value={opportunite.urlPaiement}
+                      readOnly
+                      className="flex-1 rounded-lg border border-[var(--border)] bg-[var(--background)] px-3 py-1.5 text-xs text-[var(--muted)]"
+                    />
+                    <button
+                      type="button"
+                      onClick={copierLienPaiement}
+                      className="rounded-lg border border-[var(--border)] p-1.5 text-[var(--muted)] hover:bg-[var(--border)] hover:text-[var(--foreground)]"
+                      title="Copier le lien"
+                    >
+                      {lienCopie ? <Check className="h-4 w-4 text-green-500" /> : <Copy className="h-4 w-4" />}
+                    </button>
+                    <a
+                      href={opportunite.urlPaiement}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="rounded-lg border border-[var(--border)] p-1.5 text-[var(--muted)] hover:bg-[var(--border)] hover:text-[var(--foreground)]"
+                      title="Ouvrir le lien"
+                    >
+                      <ExternalLink className="h-4 w-4" />
+                    </a>
+                  </div>
+                )}
+
+                {/* Bouton générer paiement */}
+                {peutGenererPaiement && !opportunite.urlPaiement && (
+                  <button
+                    type="button"
+                    onClick={gererGenerationPaiement}
+                    disabled={generationPaiementEnCours}
+                    className="mt-3 flex w-full items-center justify-center gap-2 rounded-lg bg-[var(--primary)] px-4 py-2 text-sm font-medium text-[var(--primary-foreground)] transition-colors hover:opacity-90 disabled:opacity-50"
+                  >
+                    {generationPaiementEnCours ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <CreditCard className="h-4 w-4" />
+                    )}
+                    Générer lien de paiement
+                  </button>
+                )}
+
+                {/* Message si déjà payé */}
+                {opportunite.statutPaiement === 'paye' && (
+                  <p className="mt-2 text-sm text-green-600 dark:text-green-400">
+                    ✓ Cette opportunité a été payée
+                  </p>
+                )}
+
+                {/* Message si pas de montant */}
+                {etapePipeline === 'gagne' && (!montantEstime || parseFloat(montantEstime) <= 0) && (
+                  <p className="mt-2 text-sm text-[var(--muted)]">
+                    Renseignez un montant estimé pour générer un lien de paiement.
+                  </p>
+                )}
+              </div>
+            )}
           </div>
 
           {/* Erreur */}

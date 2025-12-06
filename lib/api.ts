@@ -27,6 +27,7 @@ export interface ClientAvecStats {
   telephonePrincipal: string | null;
   statutClient: string;
   noteInterne: string | null;
+  tokenPortail: string | null;
   proprietaireId: string;
   dateCreation: string;
   dateMiseAJour: string;
@@ -183,6 +184,10 @@ export interface Opportunite {
   proprietaireId: string;
   dateCreation: string;
   dateMiseAJour: string;
+  // Champs paiement Stripe
+  statutPaiement: string;
+  urlPaiement: string | null;
+  stripeSessionId: string | null;
   client?: {
     id: string;
     nom: string;
@@ -245,6 +250,78 @@ export async function mettreAJourOpportunite(
 
 export async function supprimerOpportunite(id: string): Promise<void> {
   const reponse = await fetch(`${API_BASE}/opportunites/${id}`, {
+    method: 'DELETE',
+  });
+  await gererReponse<{ message: string }>(reponse);
+}
+
+// --- Paiements Stripe ---
+
+export interface ResultatPaiement {
+  urlPaiement: string;
+  sessionId: string;
+  statutPaiement: string;
+}
+
+export async function genererLienPaiement(opportuniteId: string): Promise<ResultatPaiement> {
+  const reponse = await fetch(`${API_BASE}/paiements/stripe/session`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ opportuniteId }),
+  });
+  return gererReponse<ResultatPaiement>(reponse);
+}
+
+// --- Portail Client ---
+
+export interface ResultatPortail {
+  token: string;
+  urlPortail: string;
+}
+
+export async function genererLienPortail(clientId: string): Promise<ResultatPortail> {
+  const reponse = await fetch(`${API_BASE}/clients/${clientId}/portail`, {
+    method: 'POST',
+  });
+  return gererReponse<ResultatPortail>(reponse);
+}
+
+export async function revoquerPortail(clientId: string): Promise<void> {
+  const reponse = await fetch(`${API_BASE}/clients/${clientId}/portail`, {
+    method: 'DELETE',
+  });
+  await gererReponse<{ message: string }>(reponse);
+}
+
+// --- Emails (Inbox) ---
+
+export interface EmailCreation {
+  sujet: string;
+  contenu: string;
+  direction: 'entrant' | 'sortant';
+  dateEmail?: string;
+}
+
+export async function enregistrerEmail(clientId: string, email: EmailCreation): Promise<EvenementTimeline> {
+  const reponse = await fetch(`${API_BASE}/clients/${clientId}/emails`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(email),
+  });
+  return gererReponse<EvenementTimeline>(reponse);
+}
+
+export async function modifierEmail(clientId: string, emailId: string, email: EmailCreation): Promise<EvenementTimeline> {
+  const reponse = await fetch(`${API_BASE}/clients/${clientId}/emails/${emailId}`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(email),
+  });
+  return gererReponse<EvenementTimeline>(reponse);
+}
+
+export async function supprimerEmail(clientId: string, emailId: string): Promise<void> {
+  const reponse = await fetch(`${API_BASE}/clients/${clientId}/emails/${emailId}`, {
     method: 'DELETE',
   });
   await gererReponse<{ message: string }>(reponse);

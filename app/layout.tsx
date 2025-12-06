@@ -1,7 +1,11 @@
 import type { Metadata } from 'next';
 import { Inter, Plus_Jakarta_Sans, JetBrains_Mono } from 'next/font/google';
 import './globals.css';
-import { Sidebar } from '@/components/layout/Sidebar';
+import { QueryProvider } from '@/components/providers/QueryProvider';
+import { SessionProvider } from '@/components/providers/SessionProvider';
+import { ThemeProvider } from '@/components/theme/ThemeProvider';
+import { ToastProvider } from '@/components/ui/Toast';
+import { RechercheGlobale } from '@/components/ui/RechercheGlobale';
 
 // Police pour les titres - moderne, géométrique, impactante
 const plusJakarta = Plus_Jakarta_Sans({
@@ -25,11 +29,6 @@ const jetbrainsMono = JetBrains_Mono({
   variable: '--font-mono',
   weight: ['400', '500'],
 });
-import { QueryProvider } from '@/components/providers/QueryProvider';
-import { SessionProvider } from '@/components/providers/SessionProvider';
-import { ThemeProvider } from '@/components/theme/ThemeProvider';
-import { ToastProvider } from '@/components/ui/Toast';
-import { RechercheGlobale } from '@/components/ui/RechercheGlobale';
 
 export const metadata: Metadata = {
   title: 'CRM Freelance',
@@ -48,12 +47,7 @@ export default function RootLayout({
           <SessionProvider>
             <QueryProvider>
               <ToastProvider>
-                <div className="flex min-h-screen">
-                  <Sidebar />
-                  <main className="flex-1 overflow-auto">
-                    {children}
-                  </main>
-                </div>
+                {children}
                 <RechercheGlobale />
               </ToastProvider>
             </QueryProvider>
