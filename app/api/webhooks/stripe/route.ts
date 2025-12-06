@@ -1,3 +1,5 @@
+export const dynamic = 'force-dynamic';
+
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { verifierWebhookSignature, traiterEvenementStripe } from '@/lib/integrations/stripe';
@@ -7,6 +9,7 @@ import { verifierWebhookSignature, traiterEvenementStripe } from '@/lib/integrat
  * Reçoit les événements webhook de Stripe.
  * 
  * IMPORTANT : Cette route doit recevoir le body brut (non parsé).
+ * Dans Next.js 14 App Router, request.text() retourne automatiquement le body brut.
  */
 export async function POST(request: NextRequest) {
   try {
@@ -83,13 +86,3 @@ export async function POST(request: NextRequest) {
     );
   }
 }
-
-/**
- * Configuration pour désactiver le parsing automatique du body.
- * Next.js 13+ App Router gère cela différemment.
- */
-export const config = {
-  api: {
-    bodyParser: false,
-  },
-};
