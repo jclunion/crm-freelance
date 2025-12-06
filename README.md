@@ -12,6 +12,7 @@
 | **Auth** | NextAuth.js v4, bcryptjs (hash mot de passe) |
 | **Base de données** | PostgreSQL (Supabase, Neon, ou local) |
 | **State** | React Query (TanStack Query) |
+| **Paiements** | Stripe (Checkout Sessions, Webhooks) |
 | **Déploiement** | Vercel |
 
 ## Installation
@@ -40,6 +41,10 @@ DATABASE_URL="postgresql://user:password@localhost:5432/crm_freelance?schema=pub
 # NextAuth (obligatoire)
 NEXTAUTH_SECRET="une-chaine-secrete-aleatoire-longue-32-caracteres"
 NEXTAUTH_URL="http://localhost:3000"
+
+# Stripe (optionnel - pour les paiements)
+STRIPE_SECRET_KEY="sk_test_..."
+STRIPE_WEBHOOK_SECRET="whsec_..."
 ```
 
 ### 3. Initialiser la base de données
@@ -68,24 +73,30 @@ L'application sera accessible sur [http://localhost:3000](http://localhost:3000)
 ```
 crm/
 ├── app/                          # Pages Next.js (App Router)
+│   ├── (dashboard)/              # Routes authentifiées avec sidebar
+│   │   ├── clients/              # Liste + fiche client [id]
+│   │   ├── opportunites/         # Pipeline Kanban
+│   │   └── tickets/              # Liste + fiche ticket [id]
 │   ├── api/                      # Routes API
 │   │   ├── auth/                 # NextAuth + inscription
-│   │   ├── clients/              # CRUD clients
+│   │   ├── clients/              # CRUD clients + portail + emails
 │   │   ├── contacts/             # CRUD contacts
 │   │   ├── opportunites/         # CRUD opportunités
-│   │   └── tickets/              # CRUD tickets
+│   │   ├── paiements/            # Sessions Stripe
+│   │   ├── portail/              # API portail client (public)
+│   │   ├── tickets/              # CRUD tickets
+│   │   └── webhooks/             # Webhooks Stripe
 │   ├── auth/                     # Pages authentification
 │   │   ├── connexion/            # Login
 │   │   └── inscription/          # Register
-│   ├── clients/                  # Liste + fiche client [id]
-│   ├── opportunites/             # Pipeline Kanban
-│   └── tickets/                  # Liste + fiche ticket [id]
+│   └── portail/                  # Portail client (public)
 ├── components/                   # Composants React
 │   ├── clients/                  # Modales client
 │   ├── contacts/                 # Modales contact
+│   ├── emails/                   # Modales email (inbox)
 │   ├── filtres/                  # Panneau filtres avancés
 │   ├── layout/                   # Sidebar, PageHeader
-│   ├── opportunites/             # Modales opportunité, KanbanBoard
+│   ├── opportunites/             # Modales opportunité, KanbanBoard, Paiement
 │   ├── providers/                # QueryProvider, SessionProvider
 │   ├── theme/                    # ThemeProvider, ThemeToggle
 │   ├── tickets/                  # Modales ticket
@@ -94,6 +105,9 @@ crm/
 │   ├── api.ts                    # Fonctions fetch API
 │   ├── auth.ts                   # Config NextAuth
 │   ├── hooks.ts                  # Hooks React Query
+│   ├── integrations/             # Intégrations tierces
+│   │   └── stripe.ts             # Configuration Stripe
+│   ├── portail.ts                # Utilitaires portail client
 │   ├── prisma.ts                 # Client Prisma
 │   ├── utils.ts                  # Helpers (dates, montants)
 │   └── validateurs.ts            # Schémas Zod
@@ -120,6 +134,7 @@ crm/
 - ✅ Fiche client 360° (contacts, opportunités, tickets, timeline)
 - ✅ Création, édition, suppression
 - ✅ Filtres par statut, type, date de création
+- ✅ **Portail client** avec authentification par email
 
 ### Gestion des contacts
 - ✅ Ajout de contacts à un client
@@ -132,6 +147,7 @@ crm/
 - ✅ Vue liste alternative avec colonnes configurables
 - ✅ Filtres par client, montant, dates
 - ✅ Calcul du total par colonne
+- ✅ **Paiements Stripe** (génération lien, statut, webhooks)
 
 ### Tickets de support
 - ✅ Liste avec filtres (statut, priorité, type, client)
@@ -147,6 +163,11 @@ crm/
 - ✅ Filtres par plage de montants
 - ✅ Compteur de résultats
 - ✅ Bouton de réinitialisation
+
+### Inbox Email (Timeline)
+- ✅ Consignation des emails envoyés/reçus
+- ✅ Timeline enrichie avec badges colorés
+- ✅ Édition et suppression des emails
 
 ## Scripts disponibles
 
@@ -224,10 +245,11 @@ EvenementTimeline ◄─────┘
 
 ## Prochaines fonctionnalités
 
-- ⬜ Notifications email
+- ⬜ Notifications email automatiques
 - ⬜ Multi-utilisateurs (équipe)
 - ⬜ Export PDF des fiches clients
 - ⬜ Mode hors-ligne (PWA)
+- ⬜ Intégration email (IMAP/SMTP)
 
 ## Licence MIT
 
