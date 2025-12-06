@@ -99,6 +99,7 @@ Table: `clients`
 | `telephonePrincipal` | String? | - | Téléphone principal |
 | `statutClient` | String | default("prospect") | Statut |
 | `noteInterne` | String? | - | Notes internes |
+| `tokenPortail` | String? | UNIQUE | Token d'accès au portail client |
 | `proprietaireId` | String | FK → User | Propriétaire |
 | `dateCreation` | DateTime | default(now()) | Date création |
 | `dateMiseAJour` | DateTime | @updatedAt | Date MAJ |
@@ -157,6 +158,9 @@ Table: `opportunites`
 | `dateCloturePrevue` | DateTime? | - | Date clôture prévue |
 | `etapePipeline` | String | default("lead") | Étape pipeline |
 | `raisonPerdu` | String? | - | Raison si perdu |
+| `statutPaiement` | String | default("en_attente") | Statut paiement Stripe |
+| `urlPaiement` | String? | - | URL Stripe Checkout |
+| `stripeSessionId` | String? | - | ID session Stripe |
 | `proprietaireId` | String | FK → User | Propriétaire |
 | `dateCreation` | DateTime | default(now()) | Date création |
 | `dateMiseAJour` | DateTime | @updatedAt | Date MAJ |
@@ -168,6 +172,10 @@ Table: `opportunites`
 - `negociation` - Négociation
 - `gagne` - Gagné ✓
 - `perdu` - Perdu ✗
+
+**Statuts de paiement:**
+- `en_attente` - En attente de paiement
+- `paye` - Payé
 
 **Relations:**
 - `client` → Client (onDelete: Cascade)
@@ -234,6 +242,8 @@ Table: `evenements_timeline`
 - `ticket_cree` - Ticket créé
 - `ticket_statut_change` - Statut ticket changé
 - `note_client` - Note ajoutée
+- `email_client` - Email consigné (inbox)
+- `paiement_recu` - Paiement Stripe reçu
 
 **Relations:**
 - `client` → Client (onDelete: Cascade)

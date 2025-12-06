@@ -1,14 +1,14 @@
 # CRM Freelance - Documentation Index
 
-**Version:** 0.1.0
+**Version:** 0.2.0
 **Type de projet:** Application Web Full-Stack
-**Dernière mise à jour:** 2025-12-04
+**Dernière mise à jour:** 2025-12-06
 
 ---
 
 ## 📋 Vue d'ensemble
 
-CRM Freelance est une application de gestion de la relation client (CRM) et de support unifiés, conçue pour les freelances et agences numériques. Elle permet de gérer les clients, contacts, opportunités commerciales et tickets de support dans une interface moderne et intuitive.
+CRM Freelance est une application de gestion de la relation client (CRM) et de support unifiés, conçue pour les freelances et agences numériques. Elle permet de gérer les clients, contacts, opportunités commerciales, tickets de support, paiements Stripe et portail client dans une interface moderne et intuitive.
 
 ### Liens rapides
 
@@ -47,6 +47,7 @@ CRM Freelance est une application de gestion de la relation client (CRM) et de s
 | **NextAuth.js** | 4.24+ | Authentification |
 | **bcryptjs** | 2.4+ | Hash mots de passe |
 | **Zod** | 3.23+ | Validation |
+| **Stripe** | 17+ | Paiements en ligne |
 
 ---
 
@@ -55,28 +56,36 @@ CRM Freelance est une application de gestion de la relation client (CRM) et de s
 ```
 crm/
 ├── app/                          # Pages Next.js (App Router)
+│   ├── (dashboard)/              # Routes authentifiées avec sidebar
+│   │   ├── clients/              # Liste + fiche client [id]
+│   │   ├── opportunites/         # Pipeline Kanban
+│   │   ├── tickets/              # Liste + fiche ticket [id]
+│   │   ├── layout.tsx            # Layout avec Sidebar
+│   │   └── page.tsx              # Dashboard
 │   ├── api/                      # Routes API REST
 │   │   ├── auth/                 # NextAuth endpoints
-│   │   ├── clients/              # CRUD clients
+│   │   ├── clients/              # CRUD clients + portail + emails
 │   │   ├── contacts/             # CRUD contacts
 │   │   ├── dashboard/            # Stats dashboard
 │   │   ├── opportunites/         # CRUD opportunités
-│   │   └── tickets/              # CRUD tickets
+│   │   ├── paiements/            # Sessions Stripe
+│   │   ├── portail/              # API portail client (public)
+│   │   ├── tickets/              # CRUD tickets
+│   │   └── webhooks/             # Webhooks Stripe
 │   ├── auth/                     # Pages authentification
 │   │   ├── connexion/            # Login
 │   │   └── inscription/          # Register
-│   ├── clients/                  # Liste + fiche client [id]
-│   ├── opportunites/             # Pipeline Kanban
-│   ├── tickets/                  # Liste + fiche ticket [id]
+│   ├── portail/                  # Portail client (public)
+│   │   └── [token]/              # Page portail avec auth email
 │   ├── globals.css               # Styles globaux + animations
-│   ├── layout.tsx                # Layout racine + providers
-│   └── page.tsx                  # Dashboard
+│   └── layout.tsx                # Layout racine + providers
 ├── components/                   # Composants React
 │   ├── clients/                  # Modales client
 │   ├── contacts/                 # Modales contact
+│   ├── emails/                   # Modales email (inbox)
 │   ├── filtres/                  # Panneau filtres avancés
 │   ├── layout/                   # Sidebar, PageHeader
-│   ├── opportunites/             # Modales + KanbanBoard
+│   ├── opportunites/             # Modales + KanbanBoard + Paiement
 │   ├── providers/                # QueryProvider, SessionProvider
 │   ├── theme/                    # ThemeProvider, ThemeToggle
 │   ├── tickets/                  # Modales ticket
@@ -86,6 +95,9 @@ crm/
 │   ├── auth.ts                   # Config NextAuth
 │   ├── export-csv.ts             # Export CSV
 │   ├── hooks.ts                  # Hooks React Query
+│   ├── integrations/             # Intégrations tierces
+│   │   └── stripe.ts             # Configuration Stripe
+│   ├── portail.ts                # Utilitaires portail client
 │   ├── prisma.ts                 # Client Prisma singleton
 │   ├── utils.ts                  # Helpers (dates, montants)
 │   └── validateurs.ts            # Schémas Zod
@@ -126,7 +138,7 @@ Toutes les routes sauf `/auth/*` nécessitent une authentification.
 | **Contact** | Personne chez un client | ← Client |
 | **Opportunite** | Affaire commerciale | ← Client, User |
 | **Ticket** | Demande de support | ← Client, User |
-| **EvenementTimeline** | Historique d'activité | ← Client |
+| **EvenementTimeline** | Historique d'activité (emails, paiements) | ← Client |
 
 ### Diagramme simplifié
 
@@ -158,6 +170,26 @@ User ─┬─→ Client ─┬─→ Contact
 - **Vues** : Liste / Kanban / Grille
 - **Export CSV** : données filtrées
 
+### Paiements Stripe
+
+- **Génération de lien** : depuis la modale opportunité
+- **Statut de paiement** : badges visuels (en attente, payé)
+- **Webhooks** : mise à jour automatique après paiement
+- **Redirection** : retour au CRM après paiement
+
+### Portail Client
+
+- **Accès sécurisé** : token unique + authentification par email
+- **Vue projets** : liste des opportunités avec statut paiement
+- **Vue tickets** : historique et création de tickets
+- **Gestion** : génération/révocation du lien depuis la fiche client
+
+### Inbox Email (Timeline)
+
+- **Consignation** : emails envoyés/reçus
+- **Timeline enrichie** : badges colorés par type d'événement
+- **Édition** : modification et suppression des emails
+
 ### Interactions
 
 - **Drag & drop** : Kanban avec mise à jour optimiste
@@ -181,7 +213,11 @@ npm install
 
 # Configuration
 cp .env.example .env
-# Éditer .env avec DATABASE_URL et NEXTAUTH_SECRET
+# Éditer .env avec :
+# - DATABASE_URL
+# - NEXTAUTH_SECRET
+# - STRIPE_SECRET_KEY (optionnel)
+# - STRIPE_WEBHOOK_SECRET (optionnel)
 
 # Base de données
 npm run db:generate
@@ -209,17 +245,42 @@ npm run dev
 
 ## 🔗 Endpoints API
 
+### CRUD Principal
+
 | Méthode | Endpoint | Description |
 |---------|----------|-------------|
 | GET/POST | `/api/clients` | Liste/Création clients |
-| GET/PUT/DELETE | `/api/clients/[id]` | CRUD client |
+| GET/PATCH/DELETE | `/api/clients/[id]` | CRUD client |
 | GET/POST | `/api/contacts` | Liste/Création contacts |
-| PUT/DELETE | `/api/contacts/[id]` | CRUD contact |
+| PATCH/DELETE | `/api/contacts/[id]` | CRUD contact |
 | GET/POST | `/api/opportunites` | Liste/Création opportunités |
-| PUT/DELETE | `/api/opportunites/[id]` | CRUD opportunité |
+| PATCH/DELETE | `/api/opportunites/[id]` | CRUD opportunité |
 | GET/POST | `/api/tickets` | Liste/Création tickets |
-| GET/PUT/DELETE | `/api/tickets/[id]` | CRUD ticket |
+| GET/PATCH/DELETE | `/api/tickets/[id]` | CRUD ticket |
 | GET | `/api/dashboard` | Statistiques dashboard |
+
+### Paiements Stripe
+
+| Méthode | Endpoint | Description |
+|---------|----------|-------------|
+| POST | `/api/paiements/stripe/session` | Créer session Checkout |
+| POST | `/api/webhooks/stripe` | Webhook événements Stripe |
+
+### Portail Client
+
+| Méthode | Endpoint | Description |
+|---------|----------|-------------|
+| POST/DELETE | `/api/clients/[id]/portail` | Générer/Révoquer token portail |
+| GET | `/api/portail/[token]` | Données client (public) |
+| GET | `/api/portail/[token]/info` | Infos basiques pour auth |
+| POST | `/api/portail/[token]/tickets` | Créer ticket depuis portail |
+
+### Inbox Email
+
+| Méthode | Endpoint | Description |
+|---------|----------|-------------|
+| GET/POST | `/api/clients/[id]/emails` | Liste/Création emails |
+| PATCH/DELETE | `/api/clients/[id]/emails/[emailId]` | Modifier/Supprimer email |
 
 ---
 

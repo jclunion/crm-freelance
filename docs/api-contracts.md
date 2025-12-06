@@ -12,7 +12,7 @@ L'API REST est implémentée via les **Next.js Route Handlers** (App Router).
 
 ## Authentification
 
-Toutes les routes (sauf `/api/auth/*`) nécessitent une session valide.
+Toutes les routes (sauf `/api/auth/*` et `/api/portail/*`) nécessitent une session valide.
 
 ### Headers requis
 
@@ -501,4 +501,194 @@ export const schemaClient = z.object({
   statutClient: z.enum(['prospect', 'client']).optional(),
   noteInterne: z.string().optional(),
 });
+```
+
+---
+
+## Paiements Stripe
+
+### POST /api/paiements/stripe/session
+
+Crée une session Stripe Checkout pour une opportunité.
+
+**Request Body:**
+
+```json
+{
+  "opportuniteId": "uuid"
+}
+```
+
+**Response 200:**
+
+```json
+{
+  "urlPaiement": "https://checkout.stripe.com/..."
+}
+```
+
+### POST /api/webhooks/stripe
+
+Webhook pour recevoir les événements Stripe (checkout.session.completed).
+
+**Headers requis:**
+
+```
+stripe-signature: <signature>
+```
+
+---
+
+## Portail Client
+
+> ⚠️ Ces routes sont **publiques** (pas d'authentification NextAuth requise).
+
+### POST /api/clients/[id]/portail
+
+Génère un token d'accès au portail pour un client.
+
+**Response 201:**
+
+```json
+{
+  "token": "abc123...",
+  "urlPortail": "https://example.com/portail/abc123..."
+}
+```
+
+### DELETE /api/clients/[id]/portail
+
+Révoque l'accès au portail pour un client.
+
+**Response 200:**
+
+```json
+{
+  "message": "Accès au portail révoqué"
+}
+```
+
+### GET /api/portail/[token]/info
+
+Récupère les informations basiques du client (pour la page de connexion).
+
+**Response 200:**
+
+```json
+{
+  "nom": "Nom du client",
+  "emailPrincipal": "client@example.com"
+}
+```
+
+### GET /api/portail/[token]
+
+Récupère les données complètes du client (projets, tickets).
+
+**Response 200:**
+
+```json
+{
+  "id": "uuid",
+  "nom": "Nom du client",
+  "emailPrincipal": "client@example.com",
+  "opportunites": [...],
+  "tickets": [...]
+}
+```
+
+### POST /api/portail/[token]/tickets
+
+Crée un ticket depuis le portail client.
+
+**Request Body:**
+
+```json
+{
+  "sujet": "Ma demande",
+  "description": "Description détaillée",
+  "typeTicket": "question"
+}
+```
+
+**Response 201:**
+
+```json
+{
+  "id": "uuid",
+  "sujet": "Ma demande",
+  ...
+}
+```
+
+---
+
+## Inbox Email
+
+### GET /api/clients/[id]/emails
+
+Liste les événements email d'un client.
+
+**Response 200:**
+
+```json
+[
+  {
+    "id": "uuid",
+    "typeEvenement": "email_client",
+    "descriptionTexte": "Email envoyé : Sujet\n\nContenu",
+    "dateEvenement": "2025-12-06T10:00:00Z"
+  }
+]
+```
+
+### POST /api/clients/[id]/emails
+
+Enregistre un échange email dans la timeline.
+
+**Request Body:**
+
+```json
+{
+  "sujet": "Objet de l'email",
+  "contenu": "Contenu ou résumé",
+  "direction": "entrant" | "sortant"
+}
+```
+
+**Response 201:**
+
+```json
+{
+  "id": "uuid",
+  "typeEvenement": "email_client",
+  "descriptionTexte": "Email envoyé : Objet\n\nContenu",
+  "dateEvenement": "2025-12-06T10:00:00Z"
+}
+```
+
+### PATCH /api/clients/[id]/emails/[emailId]
+
+Modifie un événement email.
+
+**Request Body:**
+
+```json
+{
+  "sujet": "Nouveau sujet",
+  "contenu": "Nouveau contenu",
+  "direction": "entrant" | "sortant"
+}
+```
+
+### DELETE /api/clients/[id]/emails/[emailId]
+
+Supprime un événement email.
+
+**Response 200:**
+
+```json
+{
+  "message": "Email supprimé"
+}
 ```
