@@ -46,7 +46,7 @@ export async function POST(request: NextRequest, context: RouteContext) {
         description,
         typeTicket: typeTicket || 'question',
         priorite: 'normale',
-        statutTicket: 'ouvert',
+        statutTicket: 'nouveau',
       },
     });
 
