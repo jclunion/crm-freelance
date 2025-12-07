@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import { Inter, Plus_Jakarta_Sans, JetBrains_Mono } from 'next/font/google';
+import { Analytics } from '@vercel/analytics/next';
 import './globals.css';
 import { QueryProvider } from '@/components/providers/QueryProvider';
 import { SessionProvider } from '@/components/providers/SessionProvider';
@@ -49,6 +50,7 @@ export default function RootLayout({
               <ToastProvider>
                 {children}
                 <RechercheGlobale />
+                <Analytics />
               </ToastProvider>
             </QueryProvider>
           </SessionProvider>
