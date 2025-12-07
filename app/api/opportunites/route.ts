@@ -1,13 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getServerSession } from 'next-auth';
+import { auth } from '@/auth';
 import { prisma } from '@/lib/prisma';
 import { opportuniteCreationSchema } from '@/lib/validateurs';
-import { authOptions } from '@/lib/auth';
 
 // GET /api/opportunites - Liste toutes les opportunités
 export async function GET(request: NextRequest) {
   try {
-    const session = await getServerSession(authOptions);
+    const session = await auth();
     if (!session?.user?.id) {
       return NextResponse.json({ erreur: 'Non autorisé' }, { status: 401 });
     }
@@ -48,7 +47,7 @@ export async function GET(request: NextRequest) {
 // POST /api/opportunites - Crée une nouvelle opportunité
 export async function POST(request: NextRequest) {
   try {
-    const session = await getServerSession(authOptions);
+    const session = await auth();
     if (!session?.user?.id) {
       return NextResponse.json({ erreur: 'Non autorisé' }, { status: 401 });
     }

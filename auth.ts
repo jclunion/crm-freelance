@@ -1,14 +1,11 @@
-import { NextAuthOptions } from 'next-auth';
-//import { PrismaAdapter } from '@auth/prisma-adapter';
-import CredentialsProvider from 'next-auth/providers/credentials';
+import NextAuth from 'next-auth';
+import Credentials from 'next-auth/providers/credentials';
 import bcrypt from 'bcryptjs';
-import { prisma } from './prisma';
+import { prisma } from '@/lib/prisma';
 
-export const authOptions: NextAuthOptions = {
-  // Désactiver l'adapter pendant le build
-  //adapter: process.env.SKIP_ENV_VALIDATION ? undefined : PrismaAdapter(prisma) as NextAuthOptions['adapter'],
+export const { handlers, signIn, signOut, auth } = NextAuth({
   providers: [
-    CredentialsProvider({
+    Credentials({
       name: 'Identifiants',
       credentials: {
         email: { label: 'Email', type: 'email', placeholder: 'email@exemple.com' },
@@ -20,7 +17,7 @@ export const authOptions: NextAuthOptions = {
         }
 
         const utilisateur = await prisma.user.findUnique({
-          where: { email: credentials.email },
+          where: { email: credentials.email as string },
         });
 
         if (!utilisateur || !utilisateur.motDePasse) {
@@ -28,7 +25,7 @@ export const authOptions: NextAuthOptions = {
         }
 
         const motDePasseValide = await bcrypt.compare(
-          credentials.motDePasse,
+          credentials.motDePasse as string,
           utilisateur.motDePasse
         );
 
@@ -69,5 +66,5 @@ export const authOptions: NextAuthOptions = {
     signIn: '/auth/connexion',
     error: '/auth/erreur',
   },
-  secret: process.env.NEXTAUTH_SECRET,
-};
+  trustHost: true,
+});

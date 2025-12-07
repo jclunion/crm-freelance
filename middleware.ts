@@ -1,32 +1,38 @@
-import { withAuth } from 'next-auth/middleware';
+import { auth } from '@/auth';
 import { NextResponse } from 'next/server';
 
-export default withAuth(
-  function middleware(req) {
-    // Logique personnalisée si nécessaire
+export default auth((req) => {
+  const { nextUrl } = req;
+  const isLoggedIn = !!req.auth;
+
+  // Routes publiques (pas besoin d'authentification)
+  const routesPubliques = [
+    '/auth',
+    '/api/auth',
+    '/api/portail',
+    '/api/webhooks',
+    '/portail',
+  ];
+
+  const estRoutePublique = routesPubliques.some((route) =>
+    nextUrl.pathname.startsWith(route)
+  );
+
+  if (estRoutePublique) {
     return NextResponse.next();
-  },
-  {
-    callbacks: {
-      authorized: ({ token, req }) => {
-        // Autoriser l'accès aux pages d'auth sans token
-        if (req.nextUrl.pathname.startsWith('/auth')) {
-          return true;
-        }
-        // Autoriser l'accès aux API publiques
-        if (req.nextUrl.pathname.startsWith('/api/auth')) {
-          return true;
-        }
-        // Pour toutes les autres routes, un token est requis
-        return !!token;
-      },
-    },
   }
-);
+
+  // Rediriger vers la connexion si non authentifié
+  if (!isLoggedIn) {
+    return NextResponse.redirect(new URL('/auth/connexion', nextUrl));
+  }
+
+  return NextResponse.next();
+});
 
 export const config = {
   matcher: [
-    // Protéger toutes les routes sauf les fichiers statiques et les pages d'auth
-    '/((?!_next/static|_next/image|favicon.ico|auth).*)',
+    // Protéger toutes les routes sauf les fichiers statiques
+    '/((?!_next/static|_next/image|favicon.ico).*)',
   ],
 };

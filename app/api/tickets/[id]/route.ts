@@ -1,8 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getServerSession } from 'next-auth';
+import { auth } from '@/auth';
 import { prisma } from '@/lib/prisma';
 import { ticketMiseAJourSchema } from '@/lib/validateurs';
-import { authOptions } from '@/lib/auth';
 
 interface RouteParams {
   params: { id: string };
@@ -11,7 +10,7 @@ interface RouteParams {
 // GET /api/tickets/[id] - Récupère un ticket par ID
 export async function GET(request: NextRequest, { params }: RouteParams) {
   try {
-    const session = await getServerSession(authOptions);
+    const session = await auth();
     if (!session?.user?.id) {
       return NextResponse.json({ erreur: 'Non autorisé' }, { status: 401 });
     }
