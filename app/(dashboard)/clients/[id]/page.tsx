@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useParams } from 'next/navigation';
 import Link from 'next/link';
 import {
   ArrowLeft,
@@ -79,13 +79,11 @@ const badgeStatut: Record<string, string> = {
 // Onglets disponibles
 type Onglet = 'apercu' | 'opportunites' | 'tickets' | 'timeline';
 
-interface PageProps {
-  params: { id: string };
-}
-
-export default function FicheClient({ params }: PageProps) {
+export default function FicheClient() {
   const router = useRouter();
-  const { data: client, isLoading, error, refetch } = useClient(params.id);
+  const params = useParams<{ id: string }>();
+  const clientId = params.id;
+  const { data: client, isLoading, error, refetch } = useClient(clientId);
   const supprimerMutation = useSupprimerClient();
   const toast = useToast();
 
@@ -122,7 +120,7 @@ export default function FicheClient({ params }: PageProps) {
   const gererSuppression = async () => {
     if (!confirm('Êtes-vous sûr de vouloir supprimer ce client ?')) return;
     try {
-      await supprimerMutation.mutateAsync(params.id);
+      await supprimerMutation.mutateAsync(clientId);
       router.push('/clients');
     } catch (erreur) {
       console.error('Erreur suppression:', erreur);

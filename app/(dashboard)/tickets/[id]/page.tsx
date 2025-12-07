@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useParams } from 'next/navigation';
 import Link from 'next/link';
 import { ArrowLeft, Edit, Trash2, Loader2, Clock, User, AlertCircle } from 'lucide-react';
 import { PageHeader } from '@/components/layout/PageHeader';
@@ -44,13 +44,11 @@ const labelsStatut: Record<string, string> = {
   resolu: 'Résolu',
 };
 
-interface PageProps {
-  params: { id: string };
-}
-
-export default function FicheTicket({ params }: PageProps) {
+export default function FicheTicket() {
   const router = useRouter();
-  const { data: ticket, isLoading, error } = useTicket(params.id);
+  const params = useParams<{ id: string }>();
+  const ticketId = params.id;
+  const { data: ticket, isLoading, error } = useTicket(ticketId);
   const supprimerMutation = useSupprimerTicket();
   const mettreAJourMutation = useMettreAJourTicket();
 
@@ -60,7 +58,7 @@ export default function FicheTicket({ params }: PageProps) {
     if (!confirm('Êtes-vous sûr de vouloir supprimer ce ticket ?')) return;
 
     try {
-      await supprimerMutation.mutateAsync(params.id);
+      await supprimerMutation.mutateAsync(ticketId);
       router.push('/tickets');
     } catch (erreur) {
       console.error('Erreur suppression:', erreur);
@@ -70,7 +68,7 @@ export default function FicheTicket({ params }: PageProps) {
   const changerStatut = async (nouveauStatut: string) => {
     try {
       await mettreAJourMutation.mutateAsync({
-        id: params.id,
+        id: ticketId,
         donnees: { statutTicket: nouveauStatut as 'nouveau' | 'en_cours' | 'resolu' },
       });
       setEditionStatut(false);

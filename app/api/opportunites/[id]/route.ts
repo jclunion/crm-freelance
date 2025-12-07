@@ -2,15 +2,16 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { opportuniteMiseAJourSchema } from '@/lib/validateurs';
 
-interface RouteParams {
-  params: { id: string };
+interface RouteContext {
+  params: Promise<{ id: string }>;
 }
 
 // GET /api/opportunites/[id] - Récupère une opportunité par ID
-export async function GET(request: NextRequest, { params }: RouteParams) {
+export async function GET(request: NextRequest, context: RouteContext) {
   try {
+    const { id } = await context.params;
     const opportunite = await prisma.opportunite.findUnique({
-      where: { id: params.id },
+      where: { id },
       include: {
         client: {
           select: {
@@ -47,13 +48,14 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
 }
 
 // PATCH /api/opportunites/[id] - Met à jour une opportunité
-export async function PATCH(request: NextRequest, { params }: RouteParams) {
+export async function PATCH(request: NextRequest, context: RouteContext) {
   try {
+    const { id } = await context.params;
     const body = await request.json();
     const donnees = opportuniteMiseAJourSchema.parse(body);
 
     const opportuniteExistante = await prisma.opportunite.findUnique({
-      where: { id: params.id },
+      where: { id },
     });
 
     if (!opportuniteExistante) {
@@ -70,7 +72,7 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
     }
 
     const opportunite = await prisma.opportunite.update({
-      where: { id: params.id },
+      where: { id },
       data: donneesMAJ,
       include: {
         client: {
@@ -113,10 +115,11 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
 }
 
 // DELETE /api/opportunites/[id] - Supprime une opportunité
-export async function DELETE(request: NextRequest, { params }: RouteParams) {
+export async function DELETE(request: NextRequest, context: RouteContext) {
   try {
+    const { id } = await context.params;
     const opportuniteExistante = await prisma.opportunite.findUnique({
-      where: { id: params.id },
+      where: { id },
     });
 
     if (!opportuniteExistante) {
@@ -127,7 +130,7 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
     }
 
     await prisma.opportunite.delete({
-      where: { id: params.id },
+      where: { id },
     });
 
     return NextResponse.json({ message: 'Opportunité supprimée' });

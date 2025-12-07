@@ -2,15 +2,16 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { contactMiseAJourSchema } from '@/lib/validateurs';
 
-interface RouteParams {
-  params: { id: string };
+interface RouteContext {
+  params: Promise<{ id: string }>;
 }
 
 // GET /api/contacts/[id] - Récupère un contact par ID
-export async function GET(request: NextRequest, { params }: RouteParams) {
+export async function GET(request: NextRequest, context: RouteContext) {
   try {
+    const { id } = await context.params;
     const contact = await prisma.contact.findUnique({
-      where: { id: params.id },
+      where: { id },
       include: {
         client: {
           select: {
@@ -39,13 +40,14 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
 }
 
 // PATCH /api/contacts/[id] - Met à jour un contact
-export async function PATCH(request: NextRequest, { params }: RouteParams) {
+export async function PATCH(request: NextRequest, context: RouteContext) {
   try {
+    const { id } = await context.params;
     const body = await request.json();
     const donnees = contactMiseAJourSchema.parse(body);
 
     const contactExistant = await prisma.contact.findUnique({
-      where: { id: params.id },
+      where: { id },
     });
 
     if (!contactExistant) {
@@ -56,7 +58,7 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
     }
 
     const contact = await prisma.contact.update({
-      where: { id: params.id },
+      where: { id },
       data: donnees,
     });
 
@@ -79,10 +81,11 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
 }
 
 // DELETE /api/contacts/[id] - Supprime un contact
-export async function DELETE(request: NextRequest, { params }: RouteParams) {
+export async function DELETE(request: NextRequest, context: RouteContext) {
   try {
+    const { id } = await context.params;
     const contactExistant = await prisma.contact.findUnique({
-      where: { id: params.id },
+      where: { id },
     });
 
     if (!contactExistant) {
@@ -93,7 +96,7 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
     }
 
     await prisma.contact.delete({
-      where: { id: params.id },
+      where: { id },
     });
 
     return NextResponse.json({ message: 'Contact supprimé' });

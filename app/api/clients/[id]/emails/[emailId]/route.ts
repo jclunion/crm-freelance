@@ -9,22 +9,22 @@ const emailUpdateSchema = z.object({
   direction: z.enum(['entrant', 'sortant']),
 });
 
-interface RouteParams {
-  params: { id: string; emailId: string };
+interface RouteContext {
+  params: Promise<{ id: string; emailId: string }>;
 }
 
 /**
  * PATCH /api/clients/[id]/emails/[emailId]
  * Met à jour un événement email.
  */
-export async function PATCH(request: NextRequest, { params }: RouteParams) {
+export async function PATCH(request: NextRequest, context: RouteContext) {
   try {
     const session = await auth();
     if (!session?.user?.id) {
       return NextResponse.json({ erreur: 'Non autorisé' }, { status: 401 });
     }
 
-    const { id: clientId, emailId } = params;
+    const { id: clientId, emailId } = await context.params;
 
     // Vérifier que le client appartient à l'utilisateur
     const client = await prisma.client.findFirst({
@@ -78,14 +78,14 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
  * DELETE /api/clients/[id]/emails/[emailId]
  * Supprime un événement email.
  */
-export async function DELETE(request: NextRequest, { params }: RouteParams) {
+export async function DELETE(request: NextRequest, context: RouteContext) {
   try {
     const session = await auth();
     if (!session?.user?.id) {
       return NextResponse.json({ erreur: 'Non autorisé' }, { status: 401 });
     }
 
-    const { id: clientId, emailId } = params;
+    const { id: clientId, emailId } = await context.params;
 
     // Vérifier que le client appartient à l'utilisateur
     const client = await prisma.client.findFirst({

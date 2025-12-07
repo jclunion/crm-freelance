@@ -3,20 +3,21 @@ import { auth } from '@/auth';
 import { prisma } from '@/lib/prisma';
 import { clientMiseAJourSchema } from '@/lib/validateurs';
 
-interface RouteParams {
-  params: { id: string };
+interface RouteContext {
+  params: Promise<{ id: string }>;
 }
 
 // GET /api/clients/[id] - Récupère un client par ID
-export async function GET(request: NextRequest, { params }: RouteParams) {
+export async function GET(request: NextRequest, context: RouteContext) {
   try {
     const session = await auth();
     if (!session?.user?.id) {
       return NextResponse.json({ erreur: 'Non autorisé' }, { status: 401 });
     }
 
+    const { id } = await context.params;
     const client = await prisma.client.findFirst({
-      where: { id: params.id, proprietaireId: session.user.id },
+      where: { id, proprietaireId: session.user.id },
       include: {
         contacts: true,
         opportunites: {
@@ -50,18 +51,19 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
 }
 
 // PATCH /api/clients/[id] - Met à jour un client
-export async function PATCH(request: NextRequest, { params }: RouteParams) {
+export async function PATCH(request: NextRequest, context: RouteContext) {
   try {
     const session = await auth();
     if (!session?.user?.id) {
       return NextResponse.json({ erreur: 'Non autorisé' }, { status: 401 });
     }
 
+    const { id } = await context.params;
     const body = await request.json();
     const donnees = clientMiseAJourSchema.parse(body);
 
     const clientExistant = await prisma.client.findFirst({
-      where: { id: params.id, proprietaireId: session.user.id },
+      where: { id, proprietaireId: session.user.id },
     });
 
     if (!clientExistant) {
@@ -72,7 +74,7 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
     }
 
     const client = await prisma.client.update({
-      where: { id: params.id },
+      where: { id },
       data: donnees,
     });
 
@@ -95,15 +97,16 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
 }
 
 // DELETE /api/clients/[id] - Supprime un client
-export async function DELETE(request: NextRequest, { params }: RouteParams) {
+export async function DELETE(request: NextRequest, context: RouteContext) {
   try {
     const session = await auth();
     if (!session?.user?.id) {
       return NextResponse.json({ erreur: 'Non autorisé' }, { status: 401 });
     }
 
+    const { id } = await context.params;
     const clientExistant = await prisma.client.findFirst({
-      where: { id: params.id, proprietaireId: session.user.id },
+      where: { id, proprietaireId: session.user.id },
     });
 
     if (!clientExistant) {
@@ -114,7 +117,7 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
     }
 
     await prisma.client.delete({
-      where: { id: params.id },
+      where: { id },
     });
 
     return NextResponse.json({ message: 'Client supprimé' });

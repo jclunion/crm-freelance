@@ -3,21 +3,22 @@ import { auth } from '@/auth';
 import { prisma } from '@/lib/prisma';
 import { ticketMiseAJourSchema } from '@/lib/validateurs';
 
-interface RouteParams {
-  params: { id: string };
+interface RouteContext {
+  params: Promise<{ id: string }>;
 }
 
 // GET /api/tickets/[id] - Récupère un ticket par ID
-export async function GET(request: NextRequest, { params }: RouteParams) {
+export async function GET(request: NextRequest, context: RouteContext) {
   try {
     const session = await auth();
     if (!session?.user?.id) {
       return NextResponse.json({ erreur: 'Non autorisé' }, { status: 401 });
     }
 
+    const { id } = await context.params;
     const ticket = await prisma.ticket.findFirst({
       where: {
-        id: params.id,
+        id,
         client: { proprietaireId: session.user.id },
       },
       include: {
@@ -49,13 +50,14 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
 }
 
 // PATCH /api/tickets/[id] - Met à jour un ticket
-export async function PATCH(request: NextRequest, { params }: RouteParams) {
+export async function PATCH(request: NextRequest, context: RouteContext) {
   try {
+    const { id } = await context.params;
     const body = await request.json();
     const donnees = ticketMiseAJourSchema.parse(body);
 
     const ticketExistant = await prisma.ticket.findUnique({
-      where: { id: params.id },
+      where: { id },
     });
 
     if (!ticketExistant) {
@@ -74,7 +76,7 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
     }
 
     const ticket = await prisma.ticket.update({
-      where: { id: params.id },
+      where: { id },
       data: donneesMAJ,
       include: {
         client: {
@@ -117,10 +119,11 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
 }
 
 // DELETE /api/tickets/[id] - Supprime un ticket
-export async function DELETE(request: NextRequest, { params }: RouteParams) {
+export async function DELETE(request: NextRequest, context: RouteContext) {
   try {
+    const { id } = await context.params;
     const ticketExistant = await prisma.ticket.findUnique({
-      where: { id: params.id },
+      where: { id },
     });
 
     if (!ticketExistant) {
@@ -131,7 +134,7 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
     }
 
     await prisma.ticket.delete({
-      where: { id: params.id },
+      where: { id },
     });
 
     return NextResponse.json({ message: 'Ticket supprimé' });

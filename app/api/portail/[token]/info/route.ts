@@ -1,17 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 
+interface RouteContext {
+  params: Promise<{ token: string }>;
+}
+
 /**
  * GET /api/portail/[token]/info
  * Récupère les infos de base du client (nom, email) pour la page de connexion.
  * Ne retourne pas les données sensibles (opportunités, tickets).
  */
-export async function GET(
-  request: NextRequest,
-  { params }: { params: { token: string } }
-) {
+export async function GET(request: NextRequest, context: RouteContext) {
   try {
-    const { token } = params;
+    const { token } = await context.params;
 
     if (!token || token.length < 32) {
       return NextResponse.json({ error: 'Token invalide' }, { status: 400 });

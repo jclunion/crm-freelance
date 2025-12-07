@@ -1,16 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 
+interface RouteContext {
+  params: Promise<{ token: string }>;
+}
+
 /**
  * POST /api/portail/[token]/tickets
  * Permet au client de créer un ticket depuis le portail.
  */
-export async function POST(
-  request: NextRequest,
-  { params }: { params: { token: string } }
-) {
+export async function POST(request: NextRequest, context: RouteContext) {
   try {
-    const { token } = params;
+    const { token } = await context.params;
 
     if (!token || token.length < 32) {
       return NextResponse.json({ error: 'Token invalide' }, { status: 400 });

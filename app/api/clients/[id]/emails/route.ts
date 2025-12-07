@@ -10,22 +10,22 @@ const emailSchema = z.object({
   dateEmail: z.string().optional(), // ISO date string, défaut = maintenant
 });
 
-interface RouteParams {
-  params: { id: string };
+interface RouteContext {
+  params: Promise<{ id: string }>;
 }
 
 /**
  * POST /api/clients/[id]/emails
  * Enregistre un échange email dans la timeline du client.
  */
-export async function POST(request: NextRequest, { params }: RouteParams) {
+export async function POST(request: NextRequest, context: RouteContext) {
   try {
     const session = await auth();
     if (!session?.user?.id) {
       return NextResponse.json({ erreur: 'Non autorisé' }, { status: 401 });
     }
 
-    const { id: clientId } = params;
+    const { id: clientId } = await context.params;
 
     // Vérifier que le client appartient à l'utilisateur
     const client = await prisma.client.findFirst({
@@ -74,14 +74,14 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
  * GET /api/clients/[id]/emails
  * Récupère les événements email du client.
  */
-export async function GET(request: NextRequest, { params }: RouteParams) {
+export async function GET(request: NextRequest, context: RouteContext) {
   try {
     const session = await auth();
     if (!session?.user?.id) {
       return NextResponse.json({ erreur: 'Non autorisé' }, { status: 401 });
     }
 
-    const { id: clientId } = params;
+    const { id: clientId } = await context.params;
 
     // Vérifier que le client appartient à l'utilisateur
     const client = await prisma.client.findFirst({
