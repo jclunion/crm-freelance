@@ -6,10 +6,10 @@
 
 | Catégorie | Technologies |
 |-----------|--------------|
-| **Frontend** | Next.js 14+ (App Router), React 18, TypeScript |
+| **Frontend** | Next.js 15 (App Router), React 18, TypeScript |
 | **Styling** | Tailwind CSS, CSS Variables (thème clair/sombre) |
-| **Backend** | Next.js API Routes, Prisma ORM |
-| **Auth** | NextAuth.js v4, bcryptjs (hash mot de passe) |
+| **Backend** | Next.js API Routes (route handlers), Prisma ORM |
+| **Auth** | Auth.js v5 (ex-NextAuth), bcryptjs (hash mot de passe) |
 | **Base de données** | PostgreSQL (Supabase, Neon, ou local) |
 | **State** | React Query (TanStack Query) |
 | **Paiements** | Stripe (Checkout Sessions, Webhooks) |
@@ -341,11 +341,21 @@ EvenementTimeline ◄─────┘
 
 ## Prochaines fonctionnalités
 
-- ⬜ Notifications email automatiques
-- ⬜ Multi-utilisateurs (équipe)
-- ⬜ Export PDF des fiches clients
-- ⬜ Mode hors-ligne (PWA)
-- ⬜ Intégration email (IMAP/SMTP)
+### V1.1 – Améliorations UX et portail
+
+- ⬜ Onglet **Documents** global côté portail (tous les documents du client, avec filtres par type)
+- ⬜ Améliorations UX du portail (squelettes de chargement, feedbacks sur téléchargements, micro-animations)
+- ⬜ Filtres avancés sur le pipeline (propriétaire, secteur d’activité client, etc.)
+- ⬜ Résumé compact des informations d’entreprise en haut de la fiche client
+
+### V2 – Roadmap moyen terme
+
+- ⬜ Génération de **devis/factures PDF** à partir des opportunités + infos entreprise
+- ⬜ Historique des factures dans le portail client
+- ⬜ Notifications email automatiques (ex : opportunité gagnée, paiement reçu)
+- ⬜ Automatisations simples (rappels pour devis non signés, paiements en attente)
+- ⬜ Multi-utilisateurs (équipe) avec rôles (admin / collaborateur)
+- ⬜ Intégration email (IMAP/SMTP) pour synchroniser l’inbox réelle
 
 ## Licence MIT
 
