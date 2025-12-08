@@ -132,14 +132,11 @@ export default function PipelineOpportunites() {
 
   // Gestion du changement d'étape (drag & drop)
   const changerEtape = async (oppId: string, nouvelleEtape: string) => {
-    try {
-      await mettreAJourMutation.mutateAsync({
-        id: oppId,
-        donnees: { etapePipeline: nouvelleEtape as 'lead' | 'qualifie' | 'proposition_envoyee' | 'negociation' | 'gagne' | 'perdu' },
-      });
-    } catch (erreur) {
-      console.error('Erreur changement étape:', erreur);
-    }
+    // On laisse l'erreur se propager pour que KanbanBoard puisse gérer le rollback et les toasts
+    await mettreAJourMutation.mutateAsync({
+      id: oppId,
+      donnees: { etapePipeline: nouvelleEtape as 'lead' | 'qualifie' | 'proposition_envoyee' | 'negociation' | 'gagne' | 'perdu' },
+    });
   };
 
   // Calcul des statistiques

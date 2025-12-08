@@ -9,6 +9,19 @@ export const clientCreationSchema = z.object({
   telephonePrincipal: z.string().optional(),
   statutClient: z.enum(['prospect', 'client']).default('prospect'),
   noteInterne: z.string().optional(),
+
+  // Informations entreprise / organisation
+  raisonSociale: z.string().optional(),
+  siteWeb: z.string().optional(),
+  adresseLigne1: z.string().optional(),
+  adresseLigne2: z.string().optional(),
+  codePostal: z.string().optional(),
+  ville: z.string().optional(),
+  pays: z.string().optional(),
+  siret: z.string().optional(),
+  numeroTva: z.string().optional(),
+  secteurActivite: z.string().optional(),
+  tailleEntreprise: z.string().optional(),
 });
 
 export const clientMiseAJourSchema = clientCreationSchema.partial();

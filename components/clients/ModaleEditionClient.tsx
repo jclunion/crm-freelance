@@ -24,6 +24,19 @@ export function ModaleEditionClient({
   const [statutClient, setStatutClient] = useState(client.statutClient);
   const [noteInterne, setNoteInterne] = useState(client.noteInterne || '');
 
+  // Informations entreprise / organisation
+  const [raisonSociale, setRaisonSociale] = useState(client.raisonSociale || '');
+  const [siteWeb, setSiteWeb] = useState(client.siteWeb || '');
+  const [adresseLigne1, setAdresseLigne1] = useState(client.adresseLigne1 || '');
+  const [adresseLigne2, setAdresseLigne2] = useState(client.adresseLigne2 || '');
+  const [codePostal, setCodePostal] = useState(client.codePostal || '');
+  const [ville, setVille] = useState(client.ville || '');
+  const [pays, setPays] = useState(client.pays || '');
+  const [siret, setSiret] = useState(client.siret || '');
+  const [numeroTva, setNumeroTva] = useState(client.numeroTva || '');
+  const [secteurActivite, setSecteurActivite] = useState(client.secteurActivite || '');
+  const [tailleEntreprise, setTailleEntreprise] = useState(client.tailleEntreprise || '');
+
   const mettreAJourMutation = useMettreAJourClient();
   const toast = useToast();
 
@@ -35,6 +48,17 @@ export function ModaleEditionClient({
     setTelephonePrincipal(client.telephonePrincipal || '');
     setStatutClient(client.statutClient);
     setNoteInterne(client.noteInterne || '');
+    setRaisonSociale(client.raisonSociale || '');
+    setSiteWeb(client.siteWeb || '');
+    setAdresseLigne1(client.adresseLigne1 || '');
+    setAdresseLigne2(client.adresseLigne2 || '');
+    setCodePostal(client.codePostal || '');
+    setVille(client.ville || '');
+    setPays(client.pays || '');
+    setSiret(client.siret || '');
+    setNumeroTva(client.numeroTva || '');
+    setSecteurActivite(client.secteurActivite || '');
+    setTailleEntreprise(client.tailleEntreprise || '');
   }, [client]);
 
   const gererSoumission = async (e: React.FormEvent) => {
@@ -50,6 +74,19 @@ export function ModaleEditionClient({
           telephonePrincipal: telephonePrincipal || undefined,
           statutClient: statutClient as 'prospect' | 'client',
           noteInterne: noteInterne || undefined,
+
+          // Informations entreprise / organisation
+          raisonSociale: raisonSociale || undefined,
+          siteWeb: siteWeb || undefined,
+          adresseLigne1: adresseLigne1 || undefined,
+          adresseLigne2: adresseLigne2 || undefined,
+          codePostal: codePostal || undefined,
+          ville: ville || undefined,
+          pays: pays || undefined,
+          siret: siret || undefined,
+          numeroTva: numeroTva || undefined,
+          secteurActivite: secteurActivite || undefined,
+          tailleEntreprise: tailleEntreprise || undefined,
         },
       });
 
@@ -157,6 +194,134 @@ export function ModaleEditionClient({
                 rows={3}
                 className="w-full rounded-lg border border-[var(--border)] bg-[var(--background)] px-3 py-2 text-sm focus:border-[var(--primary)] focus:outline-none"
               />
+            </div>
+
+            {/* Informations entreprise / organisation */}
+            <div className="mt-4 space-y-3 rounded-lg border border-dashed border-[var(--border)] p-3">
+              <p className="text-xs font-semibold text-[var(--muted)]">Informations entreprise</p>
+
+              {/* Raison sociale & Site web */}
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="mb-1 block text-xs font-medium">Raison sociale</label>
+                  <input
+                    type="text"
+                    value={raisonSociale}
+                    onChange={(e) => setRaisonSociale(e.target.value)}
+                    className="w-full rounded-lg border border-[var(--border)] bg-[var(--background)] px-2 py-1.5 text-xs focus:border-[var(--primary)] focus:outline-none"
+                    placeholder="Ex : ACME SAS"
+                  />
+                </div>
+                <div>
+                  <label className="mb-1 block text-xs font-medium">Site web</label>
+                  <input
+                    type="url"
+                    value={siteWeb}
+                    onChange={(e) => setSiteWeb(e.target.value)}
+                    className="w-full rounded-lg border border-[var(--border)] bg-[var(--background)] px-2 py-1.5 text-xs focus:border-[var(--primary)] focus:outline-none"
+                    placeholder="https://..."
+                  />
+                </div>
+              </div>
+
+              {/* Adresse */}
+              <div className="space-y-2">
+                <div>
+                  <label className="mb-1 block text-xs font-medium">Adresse (ligne 1)</label>
+                  <input
+                    type="text"
+                    value={adresseLigne1}
+                    onChange={(e) => setAdresseLigne1(e.target.value)}
+                    className="w-full rounded-lg border border-[var(--border)] bg-[var(--background)] px-2 py-1.5 text-xs focus:border-[var(--primary)] focus:outline-none"
+                    placeholder="Rue, numéro..."
+                  />
+                </div>
+                <div>
+                  <label className="mb-1 block text-xs font-medium">Adresse (ligne 2)</label>
+                  <input
+                    type="text"
+                    value={adresseLigne2}
+                    onChange={(e) => setAdresseLigne2(e.target.value)}
+                    className="w-full rounded-lg border border-[var(--border)] bg-[var(--background)] px-2 py-1.5 text-xs focus:border-[var(--primary)] focus:outline-none"
+                    placeholder="Bâtiment, étage, complément..."
+                  />
+                </div>
+                <div className="grid grid-cols-3 gap-3">
+                  <div>
+                    <label className="mb-1 block text-xs font-medium">Code postal</label>
+                    <input
+                      type="text"
+                      value={codePostal}
+                      onChange={(e) => setCodePostal(e.target.value)}
+                      className="w-full rounded-lg border border-[var(--border)] bg-[var(--background)] px-2 py-1.5 text-xs focus:border-[var(--primary)] focus:outline-none"
+                    />
+                  </div>
+                  <div>
+                    <label className="mb-1 block text-xs font-medium">Ville</label>
+                    <input
+                      type="text"
+                      value={ville}
+                      onChange={(e) => setVille(e.target.value)}
+                      className="w-full rounded-lg border border-[var(--border)] bg-[var(--background)] px-2 py-1.5 text-xs focus:border-[var(--primary)] focus:outline-none"
+                    />
+                  </div>
+                  <div>
+                    <label className="mb-1 block text-xs font-medium">Pays</label>
+                    <input
+                      type="text"
+                      value={pays}
+                      onChange={(e) => setPays(e.target.value)}
+                      className="w-full rounded-lg border border-[var(--border)] bg-[var(--background)] px-2 py-1.5 text-xs focus:border-[var(--primary)] focus:outline-none"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* SIRET / TVA */}
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="mb-1 block text-xs font-medium">SIRET</label>
+                  <input
+                    type="text"
+                    value={siret}
+                    onChange={(e) => setSiret(e.target.value)}
+                    className="w-full rounded-lg border border-[var(--border)] bg-[var(--background)] px-2 py-1.5 text-xs focus:border-[var(--primary)] focus:outline-none"
+                  />
+                </div>
+                <div>
+                  <label className="mb-1 block text-xs font-medium">N° TVA</label>
+                  <input
+                    type="text"
+                    value={numeroTva}
+                    onChange={(e) => setNumeroTva(e.target.value)}
+                    className="w-full rounded-lg border border-[var(--border)] bg-[var(--background)] px-2 py-1.5 text-xs focus:border-[var(--primary)] focus:outline-none"
+                  />
+                </div>
+              </div>
+
+              {/* Secteur / Taille */}
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="mb-1 block text-xs font-medium">Secteur d'activité</label>
+                  <input
+                    type="text"
+                    value={secteurActivite}
+                    onChange={(e) => setSecteurActivite(e.target.value)}
+                    className="w-full rounded-lg border border-[var(--border)] bg-[var(--background)] px-2 py-1.5 text-xs focus:border-[var(--primary)] focus:outline-none"
+                    placeholder="Ex : SaaS, Conseil..."
+                  />
+                </div>
+                <div>
+                  <label className="mb-1 block text-xs font-medium">Taille d'entreprise</label>
+                  <input
+                    type="text"
+                    value={tailleEntreprise}
+                    onChange={(e) => setTailleEntreprise(e.target.value)}
+                    className="w-full rounded-lg border border-[var(--border)] bg-[var(--background)] px-2 py-1.5 text-xs focus:border-[var(--primary)] focus:outline-none"
+                    placeholder="Ex : 1-10, 11-50..."
+                  />
+                </div>
+              </div>
             </div>
           </div>
 

@@ -27,6 +27,18 @@ export interface ClientAvecStats {
   telephonePrincipal: string | null;
   statutClient: string;
   noteInterne: string | null;
+  // Informations entreprise / organisation
+  raisonSociale: string | null;
+  siteWeb: string | null;
+  adresseLigne1: string | null;
+  adresseLigne2: string | null;
+  codePostal: string | null;
+  ville: string | null;
+  pays: string | null;
+  siret: string | null;
+  numeroTva: string | null;
+  secteurActivite: string | null;
+  tailleEntreprise: string | null;
   tokenPortail: string | null;
   proprietaireId: string;
   dateCreation: string;
@@ -57,6 +69,19 @@ export interface ClientCreation {
   telephonePrincipal?: string;
   statutClient?: 'prospect' | 'client';
   noteInterne?: string;
+
+  // Informations entreprise / organisation
+  raisonSociale?: string;
+  siteWeb?: string;
+  adresseLigne1?: string;
+  adresseLigne2?: string;
+  codePostal?: string;
+  ville?: string;
+  pays?: string;
+  siret?: string;
+  numeroTva?: string;
+  secteurActivite?: string;
+  tailleEntreprise?: string;
 }
 
 export async function recupererClients(params?: {

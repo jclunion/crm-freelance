@@ -13,8 +13,49 @@ import {
   Loader2,
   ExternalLink,
   Mail,
-  LogIn
+  LogIn,
+  X,
+  Calendar,
+  AlertTriangle,
+  Filter,
+  FileText,
+  Download
 } from 'lucide-react';
+
+// Fonction utilitaire pour formater une date relative
+function formaterDateRelative(date: string | Date): string {
+  const maintenant = new Date();
+  const dateObj = new Date(date);
+  const diffMs = maintenant.getTime() - dateObj.getTime();
+  const diffMinutes = Math.floor(diffMs / (1000 * 60));
+  const diffHeures = Math.floor(diffMs / (1000 * 60 * 60));
+  const diffJours = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+
+  if (diffMinutes < 1) return "À l'instant";
+  if (diffMinutes < 60) return `Il y a ${diffMinutes} min`;
+  if (diffHeures < 24) return `Il y a ${diffHeures}h`;
+  if (diffJours === 1) return 'Hier';
+  if (diffJours < 7) return `Il y a ${diffJours} jours`;
+  if (diffJours < 30) return `Il y a ${Math.floor(diffJours / 7)} sem.`;
+  return dateObj.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' });
+}
+
+// Configuration de l'avancement par étape de pipeline
+const ETAPES_AVANCEMENT: Record<string, { label: string; pourcentage: number; couleur: string }> = {
+  proposition_envoyee: { label: 'Proposition envoyée', pourcentage: 40, couleur: 'bg-blue-500' },
+  negociation: { label: 'En négociation', pourcentage: 70, couleur: 'bg-orange-500' },
+  gagne: { label: 'Terminé', pourcentage: 100, couleur: 'bg-green-500' },
+};
+
+interface DocumentPortail {
+  id: string;
+  nom: string;
+  typeDocument: string;
+  fichierUrl: string;
+  tailleFichier: number | null;
+  mimeType: string | null;
+  dateCreation: string;
+}
 
 interface Opportunite {
   id: string;
@@ -26,6 +67,7 @@ interface Opportunite {
   statutPaiement: string;
   urlPaiement: string | null;
   dateCreation: string;
+  documents?: DocumentPortail[];
 }
 
 interface TicketPortail {
@@ -43,6 +85,10 @@ interface DonneesPortail {
   id: string;
   nom: string;
   emailPrincipal: string | null;
+  proprietaire?: {
+    nomAffiche: string | null;
+    logoUrl: string | null;
+  };
   opportunites: Opportunite[];
   tickets: TicketPortail[];
 }
@@ -68,6 +114,14 @@ export default function PagePortail() {
   const [modaleTicketOuverte, setModaleTicketOuverte] = useState(false);
   const [nouveauTicket, setNouveauTicket] = useState({ sujet: '', description: '', typeTicket: 'question' });
   const [creationEnCours, setCreationEnCours] = useState(false);
+
+  // État pour les modales de détail (P2 + T3)
+  const [projetSelectionne, setProjetSelectionne] = useState<Opportunite | null>(null);
+  const [ticketSelectionne, setTicketSelectionne] = useState<TicketPortail | null>(null);
+
+  // État pour les filtres de tickets (T2)
+  const [filtreStatutTicket, setFiltreStatutTicket] = useState<string>('tous');
+  const [filtreTypeTicket, setFiltreTypeTicket] = useState<string>('tous');
 
   // Vérifier si déjà authentifié (session storage)
   useEffect(() => {
@@ -264,11 +318,29 @@ export default function PagePortail() {
 
   return (
     <div className="min-h-screen bg-[var(--background)]">
-      {/* Header */}
+      {/* Header avec logo */}
       <header className="border-b border-[var(--border)] bg-[var(--card)]">
         <div className="mx-auto max-w-4xl px-4 py-6">
-          <h1 className="text-2xl font-bold">Portail Client</h1>
-          <p className="mt-1 text-[var(--muted)]">Bienvenue, {donnees.nom}</p>
+          <div className="flex items-center gap-4">
+            {/* Logo du freelance/agence */}
+            {donnees.proprietaire?.logoUrl ? (
+              <img 
+                src={donnees.proprietaire.logoUrl} 
+                alt={donnees.proprietaire.nomAffiche || 'Logo'} 
+                className="h-12 w-12 rounded-lg object-contain"
+              />
+            ) : (
+              <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-[var(--primary)]/10">
+                <Briefcase className="h-6 w-6 text-[var(--primary)]" />
+              </div>
+            )}
+            <div>
+              <h1 className="text-2xl font-bold">
+                {donnees.proprietaire?.nomAffiche || 'Portail Client'}
+              </h1>
+              <p className="mt-1 text-[var(--muted)]">Bienvenue, {donnees.nom}</p>
+            </div>
+          </div>
         </div>
       </header>
 
@@ -312,7 +384,11 @@ export default function PagePortail() {
                 <h2 className="mb-4 text-lg font-semibold">Projets en cours</h2>
                 <div className="space-y-3">
                   {projetsEnCours.map((projet) => (
-                    <CarteProjet key={projet.id} projet={projet} />
+                    <CarteProjet 
+                      key={projet.id} 
+                      projet={projet} 
+                      onClick={() => setProjetSelectionne(projet)}
+                    />
                   ))}
                 </div>
               </section>
@@ -324,7 +400,11 @@ export default function PagePortail() {
                 <h2 className="mb-4 text-lg font-semibold">Projets terminés</h2>
                 <div className="space-y-3">
                   {projetsTermines.map((projet) => (
-                    <CarteProjet key={projet.id} projet={projet} />
+                    <CarteProjet 
+                      key={projet.id} 
+                      projet={projet} 
+                      onClick={() => setProjetSelectionne(projet)}
+                    />
                   ))}
                 </div>
               </section>
@@ -341,8 +421,34 @@ export default function PagePortail() {
 
         {ongletActif === 'tickets' && (
           <div className="space-y-4">
-            {/* Bouton créer ticket */}
-            <div className="flex justify-end">
+            {/* Barre d'actions : filtres + bouton créer */}
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              {/* Filtres (T2) */}
+              <div className="flex items-center gap-2">
+                <Filter className="h-4 w-4 text-[var(--muted)]" />
+                <select
+                  value={filtreStatutTicket}
+                  onChange={(e) => setFiltreStatutTicket(e.target.value)}
+                  className="rounded-lg border border-[var(--border)] bg-[var(--background)] px-3 py-1.5 text-sm"
+                >
+                  <option value="tous">Tous les statuts</option>
+                  <option value="nouveau">Nouveau</option>
+                  <option value="ouvert">Ouvert</option>
+                  <option value="en_cours">En cours</option>
+                  <option value="resolu">Résolu</option>
+                  <option value="ferme">Fermé</option>
+                </select>
+                <select
+                  value={filtreTypeTicket}
+                  onChange={(e) => setFiltreTypeTicket(e.target.value)}
+                  className="rounded-lg border border-[var(--border)] bg-[var(--background)] px-3 py-1.5 text-sm"
+                >
+                  <option value="tous">Tous les types</option>
+                  <option value="question">Question</option>
+                  <option value="bug">Bug</option>
+                  <option value="demande_evolution">Évolution</option>
+                </select>
+              </div>
               <button
                 onClick={() => setModaleTicketOuverte(true)}
                 className="flex items-center gap-2 rounded-lg bg-[var(--primary)] px-4 py-2 text-sm font-medium text-[var(--primary-foreground)] hover:opacity-90"
@@ -352,22 +458,51 @@ export default function PagePortail() {
               </button>
             </div>
 
-            {/* Liste des tickets */}
-            {donnees.tickets.length > 0 ? (
-              <div className="space-y-3">
-                {donnees.tickets.map((ticket) => (
-                  <CarteTicket key={ticket.id} ticket={ticket} />
-                ))}
-              </div>
-            ) : (
-              <div className="rounded-lg border border-[var(--border)] bg-[var(--card)] p-8 text-center">
-                <Ticket className="mx-auto h-12 w-12 text-[var(--muted)]" />
-                <p className="mt-4 text-[var(--muted)]">Aucun ticket</p>
-              </div>
-            )}
+            {/* Liste des tickets filtrés */}
+            {(() => {
+              const ticketsFiltres = donnees.tickets
+                .filter((t) => filtreStatutTicket === 'tous' || t.statutTicket === filtreStatutTicket)
+                .filter((t) => filtreTypeTicket === 'tous' || t.typeTicket === filtreTypeTicket)
+                .sort((a, b) => new Date(b.dateMiseAJour).getTime() - new Date(a.dateMiseAJour).getTime());
+
+              return ticketsFiltres.length > 0 ? (
+                <div className="space-y-3">
+                  {ticketsFiltres.map((ticket) => (
+                    <CarteTicket 
+                      key={ticket.id} 
+                      ticket={ticket} 
+                      onClick={() => setTicketSelectionne(ticket)}
+                    />
+                  ))}
+                </div>
+              ) : (
+                <div className="rounded-lg border border-[var(--border)] bg-[var(--card)] p-8 text-center">
+                  <Ticket className="mx-auto h-12 w-12 text-[var(--muted)]" />
+                  <p className="mt-4 text-[var(--muted)]">
+                    {donnees.tickets.length === 0 ? 'Aucun ticket' : 'Aucun ticket ne correspond aux filtres'}
+                  </p>
+                </div>
+              );
+            })()}
           </div>
         )}
       </main>
+
+      {/* Modale détail projet (P2) */}
+      {projetSelectionne && (
+        <ModaleDetailProjet 
+          projet={projetSelectionne} 
+          onClose={() => setProjetSelectionne(null)} 
+        />
+      )}
+
+      {/* Modale détail ticket (T3) */}
+      {ticketSelectionne && (
+        <ModaleDetailTicket 
+          ticket={ticketSelectionne} 
+          onClose={() => setTicketSelectionne(null)} 
+        />
+      )}
 
       {/* Modale création ticket */}
       {modaleTicketOuverte && (
@@ -438,26 +573,43 @@ export default function PagePortail() {
   );
 }
 
-// Composant carte projet
-function CarteProjet({ projet }: { projet: Opportunite }) {
-  const etapeLabels: Record<string, string> = {
-    proposition_envoyee: 'Proposition envoyée',
-    negociation: 'En négociation',
-    gagne: 'Terminé',
-  };
+// Composant carte projet (P1 : avec barre de progression)
+function CarteProjet({ projet, onClick }: { projet: Opportunite; onClick?: () => void }) {
+  const etape = ETAPES_AVANCEMENT[projet.etapePipeline] || { label: projet.etapePipeline, pourcentage: 0, couleur: 'bg-gray-400' };
 
   return (
-    <div className="rounded-lg border border-[var(--border)] bg-[var(--card)] p-4">
+    <div 
+      className="cursor-pointer rounded-lg border border-[var(--border)] bg-[var(--card)] p-4 transition-shadow hover:shadow-md"
+      onClick={onClick}
+    >
       <div className="flex items-start justify-between">
-        <div>
+        <div className="flex-1 min-w-0">
           <h3 className="font-medium">{projet.titre}</h3>
           {projet.descriptionCourte && (
-            <p className="mt-1 text-sm text-[var(--muted)]">{projet.descriptionCourte}</p>
+            <p className="mt-1 text-sm text-[var(--muted)] line-clamp-1">{projet.descriptionCourte}</p>
           )}
         </div>
-        <span className="rounded-full bg-[var(--border)] px-2.5 py-0.5 text-xs font-medium">
-          {etapeLabels[projet.etapePipeline] || projet.etapePipeline}
+        <span className={`ml-2 flex-shrink-0 rounded-full px-2.5 py-0.5 text-xs font-medium ${
+          projet.etapePipeline === 'gagne' 
+            ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' 
+            : 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400'
+        }`}>
+          {etape.label}
         </span>
+      </div>
+
+      {/* Barre de progression (P1) */}
+      <div className="mt-3">
+        <div className="flex items-center justify-between text-xs text-[var(--muted)] mb-1">
+          <span>Avancement</span>
+          <span>{etape.pourcentage}%</span>
+        </div>
+        <div className="h-2 w-full rounded-full bg-[var(--border)]">
+          <div 
+            className={`h-2 rounded-full transition-all ${etape.couleur}`}
+            style={{ width: `${etape.pourcentage}%` }}
+          />
+        </div>
       </div>
 
       <div className="mt-4 flex items-center justify-between">
@@ -473,20 +625,14 @@ function CarteProjet({ projet }: { projet: Opportunite }) {
               Payé
             </span>
           ) : projet.urlPaiement ? (
-            <a
-              href={projet.urlPaiement}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex items-center gap-2 rounded-lg bg-[var(--primary)] px-4 py-2 text-sm font-medium text-[var(--primary-foreground)] hover:opacity-90"
-            >
+            <span className="flex items-center gap-1 text-sm text-orange-600">
               <CreditCard className="h-4 w-4" />
-              Payer maintenant
-              <ExternalLink className="h-3 w-3" />
-            </a>
+              Paiement disponible
+            </span>
           ) : (
             <span className="flex items-center gap-1 text-sm text-[var(--muted)]">
               <Clock className="h-4 w-4" />
-              En attente de facture
+              En attente
             </span>
           )
         )}
@@ -495,9 +641,10 @@ function CarteProjet({ projet }: { projet: Opportunite }) {
   );
 }
 
-// Composant carte ticket
-function CarteTicket({ ticket }: { ticket: TicketPortail }) {
+// Composant carte ticket (T1 : avec date relative et priorité)
+function CarteTicket({ ticket, onClick }: { ticket: TicketPortail; onClick?: () => void }) {
   const statutColors: Record<string, string> = {
+    nouveau: 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400',
     ouvert: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400',
     en_cours: 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400',
     resolu: 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400',
@@ -505,6 +652,7 @@ function CarteTicket({ ticket }: { ticket: TicketPortail }) {
   };
 
   const statutLabels: Record<string, string> = {
+    nouveau: 'Nouveau',
     ouvert: 'Ouvert',
     en_cours: 'En cours',
     resolu: 'Résolu',
@@ -517,24 +665,261 @@ function CarteTicket({ ticket }: { ticket: TicketPortail }) {
     demande_evolution: 'Évolution',
   };
 
+  const prioriteConfig: Record<string, { label: string; couleur: string }> = {
+    basse: { label: 'Basse', couleur: 'text-gray-500' },
+    normale: { label: 'Normale', couleur: 'text-blue-500' },
+    haute: { label: 'Haute', couleur: 'text-orange-500' },
+    urgente: { label: 'Urgente', couleur: 'text-red-500' },
+  };
+
+  const priorite = prioriteConfig[ticket.priorite] || prioriteConfig.normale;
+
   return (
-    <div className="rounded-lg border border-[var(--border)] bg-[var(--card)] p-4">
+    <div 
+      className="cursor-pointer rounded-lg border border-[var(--border)] bg-[var(--card)] p-4 transition-shadow hover:shadow-md"
+      onClick={onClick}
+    >
       <div className="flex items-start justify-between">
-        <div>
+        <div className="flex-1 min-w-0">
           <h3 className="font-medium">{ticket.sujet}</h3>
           <p className="mt-1 text-sm text-[var(--muted)] line-clamp-2">{ticket.description}</p>
         </div>
-        <span className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${statutColors[ticket.statutTicket] || ''}`}>
+        <span className={`ml-2 flex-shrink-0 rounded-full px-2.5 py-0.5 text-xs font-medium ${statutColors[ticket.statutTicket] || ''}`}>
           {statutLabels[ticket.statutTicket] || ticket.statutTicket}
         </span>
       </div>
-      <div className="mt-3 flex items-center gap-3 text-xs text-[var(--muted)]">
+      <div className="mt-3 flex flex-wrap items-center gap-3 text-xs text-[var(--muted)]">
         <span className="rounded bg-[var(--border)] px-2 py-0.5">
           {typeLabels[ticket.typeTicket] || ticket.typeTicket}
         </span>
-        <span>
-          Créé le {new Date(ticket.dateCreation).toLocaleDateString('fr-FR')}
+        {ticket.priorite !== 'normale' && (
+          <span className={`flex items-center gap-1 ${priorite.couleur}`}>
+            <AlertTriangle className="h-3 w-3" />
+            {priorite.label}
+          </span>
+        )}
+        <span className="flex items-center gap-1">
+          <Clock className="h-3 w-3" />
+          {formaterDateRelative(ticket.dateMiseAJour)}
         </span>
+      </div>
+    </div>
+  );
+}
+
+// Modale détail projet (P2)
+function ModaleDetailProjet({ projet, onClose }: { projet: Opportunite; onClose: () => void }) {
+  const etape = ETAPES_AVANCEMENT[projet.etapePipeline] || { label: projet.etapePipeline, pourcentage: 0, couleur: 'bg-gray-400' };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center">
+      <div className="absolute inset-0 bg-black/50" onClick={onClose} />
+      <div className="relative z-10 w-full max-w-lg rounded-lg border border-[var(--border)] bg-[var(--background)] p-6 shadow-xl">
+        <div className="flex items-start justify-between">
+          <h2 className="text-lg font-semibold">{projet.titre}</h2>
+          <button onClick={onClose} className="rounded-lg p-1 hover:bg-[var(--border)]">
+            <X className="h-5 w-5" />
+          </button>
+        </div>
+
+        {projet.descriptionCourte && (
+          <p className="mt-2 text-[var(--muted)]">{projet.descriptionCourte}</p>
+        )}
+
+        {/* Barre de progression */}
+        <div className="mt-4">
+          <div className="flex items-center justify-between text-sm mb-1">
+            <span className="font-medium">{etape.label}</span>
+            <span className="text-[var(--muted)]">{etape.pourcentage}%</span>
+          </div>
+          <div className="h-3 w-full rounded-full bg-[var(--border)]">
+            <div 
+              className={`h-3 rounded-full transition-all ${etape.couleur}`}
+              style={{ width: `${etape.pourcentage}%` }}
+            />
+          </div>
+        </div>
+
+        {/* Infos */}
+        <div className="mt-6 space-y-3">
+          <div className="flex items-center justify-between rounded-lg bg-[var(--card)] p-3">
+            <span className="text-sm text-[var(--muted)]">Montant</span>
+            <span className="font-semibold">{projet.montantEstime?.toLocaleString('fr-FR')} {projet.devise}</span>
+          </div>
+          <div className="flex items-center justify-between rounded-lg bg-[var(--card)] p-3">
+            <span className="text-sm text-[var(--muted)]">Date de création</span>
+            <span className="flex items-center gap-2">
+              <Calendar className="h-4 w-4 text-[var(--muted)]" />
+              {new Date(projet.dateCreation).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })}
+            </span>
+          </div>
+        </div>
+
+        {/* Documents du projet */}
+        {projet.documents && projet.documents.length > 0 && (
+          <div className="mt-6">
+            <h3 className="text-sm font-medium mb-3 flex items-center gap-2">
+              <FileText className="h-4 w-4 text-[var(--muted)]" />
+              Documents ({projet.documents.length})
+            </h3>
+            <div className="space-y-2">
+              {projet.documents.map((doc) => (
+                <a
+                  key={doc.id}
+                  href={doc.fichierUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center justify-between rounded-lg border border-[var(--border)] bg-[var(--card)] p-3 transition-colors hover:bg-[var(--border)]"
+                >
+                  <div className="flex items-center gap-3">
+                    <FileText className="h-5 w-5 text-[var(--primary)]" />
+                    <div>
+                      <p className="text-sm font-medium">{doc.nom}</p>
+                      <p className="text-xs text-[var(--muted)]">
+                        {doc.typeDocument === 'contrat' && 'Contrat'}
+                        {doc.typeDocument === 'devis' && 'Devis'}
+                        {doc.typeDocument === 'facture' && 'Facture'}
+                        {doc.typeDocument === 'autre' && 'Document'}
+                        {doc.tailleFichier && ` • ${(doc.tailleFichier / 1024).toFixed(0)} Ko`}
+                      </p>
+                    </div>
+                  </div>
+                  <Download className="h-4 w-4 text-[var(--muted)]" />
+                </a>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Action paiement si projet gagné */}
+        {projet.etapePipeline === 'gagne' && (
+          <div className="mt-6 rounded-lg border border-[var(--border)] p-4">
+            {projet.statutPaiement === 'paye' ? (
+              <div className="flex items-center gap-2 text-green-600">
+                <CheckCircle className="h-5 w-5" />
+                <span className="font-medium">Paiement effectué</span>
+              </div>
+            ) : projet.urlPaiement ? (
+              <div className="space-y-3">
+                <p className="text-sm text-[var(--muted)]">Le paiement est disponible pour ce projet.</p>
+                <a
+                  href={projet.urlPaiement}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex w-full items-center justify-center gap-2 rounded-lg bg-[var(--primary)] px-4 py-3 text-sm font-medium text-[var(--primary-foreground)] hover:opacity-90"
+                >
+                  <CreditCard className="h-4 w-4" />
+                  Payer maintenant
+                  <ExternalLink className="h-3 w-3" />
+                </a>
+              </div>
+            ) : (
+              <div className="flex items-center gap-2 text-[var(--muted)]">
+                <Clock className="h-5 w-5" />
+                <span>En attente de la facture</span>
+              </div>
+            )}
+          </div>
+        )}
+
+        <button
+          onClick={onClose}
+          className="mt-6 w-full rounded-lg border border-[var(--border)] py-2 text-sm font-medium hover:bg-[var(--border)]"
+        >
+          Fermer
+        </button>
+      </div>
+    </div>
+  );
+}
+
+// Modale détail ticket (T3)
+function ModaleDetailTicket({ ticket, onClose }: { ticket: TicketPortail; onClose: () => void }) {
+  const statutColors: Record<string, string> = {
+    nouveau: 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400',
+    ouvert: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400',
+    en_cours: 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400',
+    resolu: 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400',
+    ferme: 'bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400',
+  };
+
+  const statutLabels: Record<string, string> = {
+    nouveau: 'Nouveau',
+    ouvert: 'Ouvert',
+    en_cours: 'En cours',
+    resolu: 'Résolu',
+    ferme: 'Fermé',
+  };
+
+  const typeLabels: Record<string, string> = {
+    question: 'Question',
+    bug: 'Bug',
+    demande_evolution: 'Évolution',
+  };
+
+  const prioriteLabels: Record<string, string> = {
+    basse: 'Basse',
+    normale: 'Normale',
+    haute: 'Haute',
+    urgente: 'Urgente',
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center">
+      <div className="absolute inset-0 bg-black/50" onClick={onClose} />
+      <div className="relative z-10 w-full max-w-lg rounded-lg border border-[var(--border)] bg-[var(--background)] p-6 shadow-xl">
+        <div className="flex items-start justify-between">
+          <div className="flex-1">
+            <div className="flex items-center gap-2">
+              <h2 className="text-lg font-semibold">{ticket.sujet}</h2>
+              <span className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${statutColors[ticket.statutTicket] || ''}`}>
+                {statutLabels[ticket.statutTicket] || ticket.statutTicket}
+              </span>
+            </div>
+          </div>
+          <button onClick={onClose} className="rounded-lg p-1 hover:bg-[var(--border)]">
+            <X className="h-5 w-5" />
+          </button>
+        </div>
+
+        {/* Badges type + priorité */}
+        <div className="mt-3 flex items-center gap-2">
+          <span className="rounded bg-[var(--border)] px-2 py-0.5 text-xs">
+            {typeLabels[ticket.typeTicket] || ticket.typeTicket}
+          </span>
+          <span className="rounded bg-[var(--border)] px-2 py-0.5 text-xs">
+            Priorité : {prioriteLabels[ticket.priorite] || ticket.priorite}
+          </span>
+        </div>
+
+        {/* Description complète */}
+        <div className="mt-4 rounded-lg bg-[var(--card)] p-4">
+          <h3 className="text-sm font-medium text-[var(--muted)] mb-2">Description</h3>
+          <p className="text-sm whitespace-pre-wrap">{ticket.description}</p>
+        </div>
+
+        {/* Dates */}
+        <div className="mt-4 grid grid-cols-2 gap-3">
+          <div className="rounded-lg bg-[var(--card)] p-3">
+            <span className="text-xs text-[var(--muted)]">Créé le</span>
+            <p className="mt-1 text-sm font-medium">
+              {new Date(ticket.dateCreation).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })}
+            </p>
+          </div>
+          <div className="rounded-lg bg-[var(--card)] p-3">
+            <span className="text-xs text-[var(--muted)]">Dernière mise à jour</span>
+            <p className="mt-1 text-sm font-medium">
+              {formaterDateRelative(ticket.dateMiseAJour)}
+            </p>
+          </div>
+        </div>
+
+        <button
+          onClick={onClose}
+          className="mt-6 w-full rounded-lg border border-[var(--border)] py-2 text-sm font-medium hover:bg-[var(--border)]"
+        >
+          Fermer
+        </button>
       </div>
     </div>
   );

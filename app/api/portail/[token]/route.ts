@@ -24,6 +24,12 @@ export async function GET(request: NextRequest, context: RouteContext) {
         id: true,
         nom: true,
         emailPrincipal: true,
+        proprietaire: {
+          select: {
+            nomAffiche: true,
+            logoUrl: true,
+          },
+        },
         opportunites: {
           where: {
             etapePipeline: { in: ['gagne', 'proposition_envoyee', 'negociation'] },
@@ -38,6 +44,19 @@ export async function GET(request: NextRequest, context: RouteContext) {
             statutPaiement: true,
             urlPaiement: true,
             dateCreation: true,
+            documents: {
+              where: { visiblePortail: true },
+              select: {
+                id: true,
+                nom: true,
+                typeDocument: true,
+                fichierUrl: true,
+                tailleFichier: true,
+                mimeType: true,
+                dateCreation: true,
+              },
+              orderBy: { dateCreation: 'desc' },
+            },
           },
           orderBy: { dateCreation: 'desc' },
         },

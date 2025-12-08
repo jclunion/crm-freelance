@@ -84,6 +84,8 @@ crm/
 │   │   ├── opportunites/         # CRUD opportunités
 │   │   ├── paiements/            # Sessions Stripe
 │   │   ├── portail/              # API portail client (public)
+│   │   ├── documents/            # CRUD documents liés aux opportunités
+│   │   ├── upload/               # Upload de fichiers (documents projets)
 │   │   ├── tickets/              # CRUD tickets
 │   │   └── webhooks/             # Webhooks Stripe
 │   ├── auth/                     # Pages authentification
@@ -91,12 +93,12 @@ crm/
 │   │   └── inscription/          # Register
 │   └── portail/                  # Portail client (public)
 ├── components/                   # Composants React
-│   ├── clients/                  # Modales client
+│   ├── clients/                  # Modales client (fiche 360° + infos entreprise)
 │   ├── contacts/                 # Modales contact
 │   ├── emails/                   # Modales email (inbox)
 │   ├── filtres/                  # Panneau filtres avancés
 │   ├── layout/                   # Sidebar, PageHeader
-│   ├── opportunites/             # Modales opportunité, KanbanBoard, Paiement
+│   ├── opportunites/             # Modales opportunité, KanbanBoard, Paiement, GestionDocuments
 │   ├── providers/                # QueryProvider, SessionProvider
 │   ├── theme/                    # ThemeProvider, ThemeToggle
 │   ├── tickets/                  # Modales ticket
@@ -135,6 +137,7 @@ crm/
 - ✅ Création, édition, suppression
 - ✅ Filtres par statut, type, date de création
 - ✅ **Portail client** avec authentification par email
+- ✅ Informations d’entreprise sur la fiche client (raison sociale, site, adresse, SIRET, TVA, secteur, taille)
 
 ### Gestion des contacts
 - ✅ Ajout de contacts à un client
@@ -148,6 +151,18 @@ crm/
 - ✅ Filtres par client, montant, dates
 - ✅ Calcul du total par colonne
 - ✅ **Paiements Stripe** (génération lien, statut, webhooks)
+- ✅ **Documents liés aux opportunités** (contrats, devis, factures, autres)
+
+### Gestion des documents
+- ✅ Upload de fichiers locaux (PDF, Word, Excel, images) via `/api/upload`
+- ✅ Association des documents aux opportunités (modèle `Document`)
+- ✅ Gestion des documents dans le dashboard (composant `GestionDocuments`)
+- ✅ Contrôle de la visibilité sur le portail client (`visiblePortail`)
+
+### Portail client
+- ✅ Header avec nom et logo du freelance / de l’agence (`logoUrl`)
+- ✅ Vue projets / opportunités avec détails et section **Documents**
+- ✅ Téléchargement / ouverture des documents visibles depuis le portail
 
 ### Tickets de support
 - ✅ Liste avec filtres (statut, priorité, type, client)
@@ -168,6 +183,87 @@ crm/
 - ✅ Consignation des emails envoyés/reçus
 - ✅ Timeline enrichie avec badges colorés
 - ✅ Édition et suppression des emails
+
+## Exemples d’API (exploitation externe)
+
+### Upload d’un document (`POST /api/upload`)
+
+Exemple d’appel depuis un autre front (TypeScript) pour uploader un fichier et récupérer son URL publique :
+
+```ts
+async function uploaderDocument(file: File) {
+  const formData = new FormData();
+  formData.append('file', file);
+
+  const response = await fetch('/api/upload', {
+    method: 'POST',
+    body: formData,
+    credentials: 'include', // pour envoyer le cookie de session si besoin
+  });
+
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({}));
+    throw new Error(error.error || 'Erreur upload');
+  }
+
+  const data: { url: string; nom: string; taille: number; mimeType: string } = await response.json();
+  return data.url; // URL publique à stocker dans ton propre système si nécessaire
+}
+```
+
+### Création / liste de documents (`/api/documents`)
+
+Récupérer les documents liés à une opportunité :
+
+```ts
+async function listerDocuments(opportuniteId: string) {
+  const response = await fetch(`/api/documents?opportuniteId=${opportuniteId}`, {
+    credentials: 'include',
+  });
+
+  if (!response.ok) {
+    throw new Error('Erreur lors du chargement des documents');
+  }
+
+  type Document = {
+    id: string;
+    nom: string;
+    typeDocument: string;
+    fichierUrl: string;
+    visiblePortail: boolean;
+  };
+
+  const docs: Document[] = await response.json();
+  return docs;
+}
+```
+
+Créer un document (en réutilisant une URL de fichier déjà uploadée) :
+
+```ts
+async function creerDocument(opportuniteId: string, fichierUrl: string) {
+  const body = {
+    opportuniteId,
+    nom: 'Contrat de prestation',
+    typeDocument: 'contrat',
+    fichierUrl,
+    visiblePortail: true,
+  };
+
+  const response = await fetch('/api/documents', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+    credentials: 'include',
+  });
+
+  if (!response.ok) {
+    throw new Error('Erreur lors de la création du document');
+  }
+
+  return response.json();
+}
+```
 
 ## Scripts disponibles
 

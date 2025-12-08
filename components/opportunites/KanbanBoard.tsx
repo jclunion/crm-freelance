@@ -13,8 +13,43 @@ import {
   useDraggable,
 } from '@dnd-kit/core';
 import { CSS } from '@dnd-kit/utilities';
-import { GripVertical, CreditCard, CheckCircle } from 'lucide-react';
+import { GripVertical, CreditCard, CheckCircle, Clock } from 'lucide-react';
 import type { Opportunite } from '@/lib/api';
+import { useToast } from '@/components/ui/Toast';
+
+// Fonction utilitaire pour formater une date relative
+function formaterDateRelative(date: string | Date): string {
+  const maintenant = new Date();
+  const dateObj = new Date(date);
+  const diffMs = maintenant.getTime() - dateObj.getTime();
+  const diffMinutes = Math.floor(diffMs / (1000 * 60));
+  const diffHeures = Math.floor(diffMs / (1000 * 60 * 60));
+  const diffJours = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+
+  if (diffMinutes < 1) return "À l'instant";
+  if (diffMinutes < 60) return `Il y a ${diffMinutes} min`;
+  if (diffHeures < 24) return `Il y a ${diffHeures}h`;
+  if (diffJours === 1) return 'Hier';
+  if (diffJours < 7) return `Il y a ${diffJours} jours`;
+  if (diffJours < 30) return `Il y a ${Math.floor(diffJours / 7)} sem.`;
+  return dateObj.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' });
+}
+
+// Configuration des badges de probabilité
+function getBadgeProbabilite(probabilite: number | null | undefined): { label: string; couleur: string } | null {
+  // Si null ou undefined, pas de badge
+  if (probabilite === null || probabilite === undefined) return null;
+  // Rouge pour faible probabilité (0-30%)
+  if (probabilite <= 30) {
+    return { label: `${probabilite}%`, couleur: 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400' };
+  }
+  // Orange pour probabilité moyenne (31-60%)
+  if (probabilite <= 60) {
+    return { label: `${probabilite}%`, couleur: 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400' };
+  }
+  // Vert pour haute probabilité (>60%)
+  return { label: `${probabilite}%`, couleur: 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' };
+}
 
 interface EtapePipeline {
   id: string;
@@ -76,6 +111,12 @@ function CarteOpportunite({
           <p className="mt-1 text-sm text-[var(--muted)] truncate">
             {opportunite.client?.nom || 'Client inconnu'}
           </p>
+          {/* Date de mise à jour */}
+          <div className="mt-2 flex items-center gap-1 text-xs text-[var(--muted)]">
+            <Clock className="h-3 w-3" />
+            <span>{formaterDateRelative(opportunite.dateMiseAJour || opportunite.dateCreation)}</span>
+          </div>
+
           <div className="mt-2 flex items-center justify-between">
             <p className="text-lg font-semibold text-[var(--primary)]">
               {opportunite.montantEstime?.toLocaleString('fr-FR') || 0} €
@@ -95,11 +136,15 @@ function CarteOpportunite({
                   </span>
                 ) : null
               )}
-              {opportunite.probabilite && opportunite.etapePipeline !== 'gagne' && (
-                <span className="rounded-full bg-[var(--border)] px-2 py-0.5 text-xs">
-                  {opportunite.probabilite}%
-                </span>
-              )}
+              {/* Badge probabilité coloré (sauf pour les opportunités gagnées) */}
+              {opportunite.etapePipeline !== 'gagne' && (() => {
+                const badge = getBadgeProbabilite(opportunite.probabilite);
+                return badge ? (
+                  <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${badge.couleur}`}>
+                    {badge.label}
+                  </span>
+                ) : null;
+              })()}
             </div>
           </div>
         </div>
@@ -194,6 +239,7 @@ function ColonneKanban({
 
 export function KanbanBoard({ etapes, opportunites, onChangerEtape, onClickOpportunite }: KanbanBoardProps) {
   const [activeId, setActiveId] = useState<string | null>(null);
+  const toast = useToast();
   
   // État local pour les opportunités (mise à jour optimiste)
   const [opportunitesLocales, setOpportunitesLocales] = useState<Opportunite[]>(opportunites);
@@ -253,6 +299,9 @@ export function KanbanBoard({ etapes, opportunites, onChangerEtape, onClickOppor
         // Appeler l'API en arrière-plan
         try {
           await onChangerEtape(activeOppId, nouvelleEtape);
+          // Toast de succès
+          const nomEtape = etapes.find((e) => e.id === nouvelleEtape)?.nom || nouvelleEtape;
+          toast.success('Étape mise à jour', `Opportunité déplacée vers "${nomEtape}"`);
         } catch (error) {
           // En cas d'erreur, restaurer l'état précédent
           setOpportunitesLocales((prev) =>
@@ -260,11 +309,13 @@ export function KanbanBoard({ etapes, opportunites, onChangerEtape, onClickOppor
               o.id === activeOppId ? { ...o, etapePipeline: etapeActuelle } : o
             )
           );
+          // Toast d'erreur
+          toast.error('Erreur', 'Impossible de changer l\'étape. Veuillez réessayer.');
           console.error('Erreur lors du changement d\'étape:', error);
         }
       }
     }
-  }, [opportunitesLocales, etapes, onChangerEtape]);
+  }, [opportunitesLocales, etapes, onChangerEtape, toast]);
 
   return (
     <DndContext

@@ -5,6 +5,7 @@ import { X, Loader2, Trash2, CreditCard, ExternalLink, Copy, Check } from 'lucid
 import { useMettreAJourOpportunite, useSupprimerOpportunite, useOpportunites } from '@/lib/hooks';
 import { recupererClients, genererLienPaiement, type ClientAvecStats, type Opportunite } from '@/lib/api';
 import { useToast } from '@/components/ui/Toast';
+import { GestionDocuments } from './GestionDocuments';
 
 interface ModaleEditionOpportuniteProps {
   ouverte: boolean;
@@ -336,6 +337,9 @@ export function ModaleEditionOpportunite({
                 )}
               </div>
             )}
+
+            {/* Section Documents */}
+            <GestionDocuments key={opportunite.id} opportuniteId={opportunite.id} />
           </div>
 
           {/* Erreur */}

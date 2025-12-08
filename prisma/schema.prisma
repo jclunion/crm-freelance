@@ -61,6 +61,7 @@ model User {
   motDePasse      String?   // Hash bcrypt pour credentials
   nomAffiche      String?
   image           String?
+  logoUrl         String?   // Logo affiché sur le portail client
   role            String    @default("freelance_solo") // freelance_solo, membre_agence, admin
   fuseauHoraire   String    @default("Europe/Paris")
   langueInterface String    @default("fr")
@@ -70,6 +71,7 @@ model User {
   clients         Client[]
   opportunites    Opportunite[]
   ticketsAssignes Ticket[]       @relation("TicketAssigne")
+  documents       Document[]
 
   dateCreation    DateTime @default(now())
   dateMiseAJour   DateTime @updatedAt
@@ -86,6 +88,19 @@ model Client {
   telephonePrincipal String?
   statutClient       String   @default("prospect") // prospect, client
   noteInterne        String?
+
+  // Informations entreprise / organisation
+  raisonSociale      String?
+  siteWeb            String?
+  adresseLigne1      String?
+  adresseLigne2      String?
+  codePostal         String?
+  ville              String?
+  pays               String?
+  siret              String?
+  numeroTva          String?
+  secteurActivite    String?
+  tailleEntreprise   String?
 
   proprietaireId     String
   proprietaire       User @relation(fields: [proprietaireId], references: [id])
@@ -137,6 +152,8 @@ model Opportunite {
   proprietaireId       String
   proprietaire         User @relation(fields: [proprietaireId], references: [id])
 
+  documents            Document[]
+
   dateCreation         DateTime @default(now())
   dateMiseAJour        DateTime @updatedAt
 
@@ -146,6 +163,29 @@ model Opportunite {
   stripeSessionId      String?
 
   @@map("opportunites")
+}
+
+// Document lié à une opportunité (contrat, devis, facture, etc.)
+model Document {
+  id               String   @id @default(cuid())
+  opportuniteId    String
+  opportunite      Opportunite @relation(fields: [opportuniteId], references: [id], onDelete: Cascade)
+
+  nom              String   // Nom affiché (ex: "Contrat de prestation")
+  typeDocument     String   // contrat, devis, facture, autre
+  fichierUrl       String   // URL du fichier (stockage externe ou local)
+  tailleFichier    Int?     // Taille en octets
+  mimeType         String?  // Type MIME (application/pdf, etc.)
+
+  visiblePortail   Boolean  @default(true) // Si le document est visible sur le portail client
+
+  proprietaireId   String
+  proprietaire     User @relation(fields: [proprietaireId], references: [id])
+
+  dateCreation     DateTime @default(now())
+  dateMiseAJour    DateTime @updatedAt
+
+  @@map("documents")
 }
 
 // Ticket de support
