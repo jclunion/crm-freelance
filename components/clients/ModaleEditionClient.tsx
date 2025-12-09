@@ -106,7 +106,7 @@ export function ModaleEditionClient({
       <div className="modal-overlay absolute inset-0 bg-black/50" onClick={onFermer} />
 
       {/* Modale */}
-      <div className="modal-content relative z-10 w-full max-w-lg rounded-lg border border-[var(--border)] bg-[var(--background)] shadow-xl">
+      <div className="modal-content relative z-10 flex w-full max-w-lg max-h-[85vh] flex-col rounded-lg border border-[var(--border)] bg-[var(--background)] shadow-xl">
         {/* Header */}
         <div className="flex items-center justify-between border-b border-[var(--border)] px-6 py-4">
           <h2 className="text-lg font-semibold">Modifier le client</h2>
@@ -119,7 +119,7 @@ export function ModaleEditionClient({
         </div>
 
         {/* Formulaire */}
-        <form onSubmit={gererSoumission} className="p-6">
+        <form onSubmit={gererSoumission} className="flex-1 overflow-y-auto p-6">
           <div className="space-y-4">
             {/* Nom */}
             <div>
