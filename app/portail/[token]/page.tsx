@@ -85,6 +85,7 @@ interface DonneesPortail {
   id: string;
   nom: string;
   emailPrincipal: string | null;
+  logoClientUrl?: string | null;
   proprietaire?: {
     nomAffiche: string | null;
     logoUrl: string | null;
@@ -100,7 +101,7 @@ export default function PagePortail() {
   const [donnees, setDonnees] = useState<DonneesPortail | null>(null);
   const [chargement, setChargement] = useState(true);
   const [erreur, setErreur] = useState<string | null>(null);
-  const [ongletActif, setOngletActif] = useState<'projets' | 'tickets'>('projets');
+  const [ongletActif, setOngletActif] = useState<'projets' | 'tickets' | 'documents'>('projets');
 
   // État pour l'authentification
   const [estAuthentifie, setEstAuthentifie] = useState(false);
@@ -122,6 +123,9 @@ export default function PagePortail() {
   // État pour les filtres de tickets (T2)
   const [filtreStatutTicket, setFiltreStatutTicket] = useState<string>('tous');
   const [filtreTypeTicket, setFiltreTypeTicket] = useState<string>('tous');
+
+  // État pour le filtre de documents
+  const [filtreTypeDocument, setFiltreTypeDocument] = useState<string>('tous');
 
   // Vérifier si déjà authentifié (session storage)
   useEffect(() => {
@@ -321,25 +325,33 @@ export default function PagePortail() {
       {/* Header avec logo */}
       <header className="border-b border-[var(--border)] bg-[var(--card)]">
         <div className="mx-auto max-w-4xl px-4 py-6">
-          <div className="flex items-center gap-4">
-            {/* Logo du freelance/agence */}
-            {donnees.proprietaire?.logoUrl ? (
-              <img 
-                src={donnees.proprietaire.logoUrl} 
-                alt={donnees.proprietaire.nomAffiche || 'Logo'} 
-                className="h-12 w-12 rounded-lg object-contain"
-              />
-            ) : (
-              <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-[var(--primary)]/10">
-                <Briefcase className="h-6 w-6 text-[var(--primary)]" />
+          <div className="flex items-center justify-between gap-4">
+            <div className="flex items-center gap-4">
+              {donnees.proprietaire?.logoUrl ? (
+                <img
+                  src={donnees.proprietaire.logoUrl}
+                  alt={donnees.proprietaire.nomAffiche || 'Logo'}
+                  className="h-12 w-12 rounded-lg object-contain"
+                />
+              ) : (
+                <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-[var(--primary)]/10">
+                  <Briefcase className="h-6 w-6 text-[var(--primary)]" />
+                </div>
+              )}
+              <div>
+                <h1 className="text-2xl font-bold">
+                  {donnees.proprietaire?.nomAffiche || 'Portail Client'}
+                </h1>
+                <p className="mt-1 text-[var(--muted)]">Bienvenue, {donnees.nom}</p>
               </div>
-            )}
-            <div>
-              <h1 className="text-2xl font-bold">
-                {donnees.proprietaire?.nomAffiche || 'Portail Client'}
-              </h1>
-              <p className="mt-1 text-[var(--muted)]">Bienvenue, {donnees.nom}</p>
             </div>
+            {donnees.logoClientUrl && (
+              <img
+                src={donnees.logoClientUrl}
+                alt={donnees.nom}
+                className="h-[72px] max-w-[200px] rounded-lg object-contain border border-[var(--border)] bg-[var(--background)]"
+              />
+            )}
           </div>
         </div>
       </header>
@@ -369,6 +381,17 @@ export default function PagePortail() {
             >
               <Ticket className="h-4 w-4" />
               Tickets ({donnees.tickets.length})
+            </button>
+            <button
+              onClick={() => setOngletActif('documents')}
+              className={`flex items-center gap-2 border-b-2 px-4 py-3 text-sm font-medium transition-colors ${
+                ongletActif === 'documents'
+                  ? 'border-[var(--primary)] text-[var(--primary)]'
+                  : 'border-transparent text-[var(--muted)] hover:text-[var(--foreground)]'
+              }`}
+            >
+              <FileText className="h-4 w-4" />
+              Documents ({donnees.opportunites.reduce((acc, o) => acc + (o.documents?.length || 0), 0)})
             </button>
           </nav>
         </div>
@@ -480,6 +503,86 @@ export default function PagePortail() {
                   <Ticket className="mx-auto h-12 w-12 text-[var(--muted)]" />
                   <p className="mt-4 text-[var(--muted)]">
                     {donnees.tickets.length === 0 ? 'Aucun ticket' : 'Aucun ticket ne correspond aux filtres'}
+                  </p>
+                </div>
+              );
+            })()}
+          </div>
+        )}
+
+        {ongletActif === 'documents' && (
+          <div className="space-y-4">
+            {/* Filtre par type */}
+            <div className="flex items-center gap-2">
+              <Filter className="h-4 w-4 text-[var(--muted)]" />
+              <select
+                value={filtreTypeDocument}
+                onChange={(e) => setFiltreTypeDocument(e.target.value)}
+                className="rounded-lg border border-[var(--border)] bg-[var(--background)] px-3 py-1.5 text-sm"
+              >
+                <option value="tous">Tous les types</option>
+                <option value="contrat">Contrats</option>
+                <option value="devis">Devis</option>
+                <option value="facture">Factures</option>
+                <option value="autre">Autres</option>
+              </select>
+            </div>
+
+            {/* Liste des documents */}
+            {(() => {
+              // Agréger tous les documents de toutes les opportunités
+              const tousLesDocuments = donnees.opportunites.flatMap((opp) =>
+                (opp.documents || []).map((doc) => ({
+                  ...doc,
+                  projetTitre: opp.titre,
+                  projetId: opp.id,
+                }))
+              );
+
+              const documentsFiltres = tousLesDocuments
+                .filter((d) => filtreTypeDocument === 'tous' || d.typeDocument === filtreTypeDocument)
+                .sort((a, b) => new Date(b.dateCreation).getTime() - new Date(a.dateCreation).getTime());
+
+              const typeLabels: Record<string, string> = {
+                contrat: 'Contrat',
+                devis: 'Devis',
+                facture: 'Facture',
+                autre: 'Document',
+              };
+
+              return documentsFiltres.length > 0 ? (
+                <div className="space-y-3">
+                  {documentsFiltres.map((doc) => (
+                    <a
+                      key={doc.id}
+                      href={doc.fichierUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex items-center justify-between rounded-lg border border-[var(--border)] bg-[var(--card)] p-4 transition-colors hover:bg-[var(--border)]"
+                    >
+                      <div className="flex items-center gap-4">
+                        <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-[var(--primary)]/10">
+                          <FileText className="h-5 w-5 text-[var(--primary)]" />
+                        </div>
+                        <div>
+                          <p className="font-medium">{doc.nom}</p>
+                          <p className="text-sm text-[var(--muted)]">
+                            {typeLabels[doc.typeDocument] || doc.typeDocument}
+                            {' • '}
+                            {doc.projetTitre}
+                            {doc.tailleFichier && ` • ${(doc.tailleFichier / 1024).toFixed(0)} Ko`}
+                          </p>
+                        </div>
+                      </div>
+                      <Download className="h-5 w-5 text-[var(--muted)]" />
+                    </a>
+                  ))}
+                </div>
+              ) : (
+                <div className="rounded-lg border border-[var(--border)] bg-[var(--card)] p-8 text-center">
+                  <FileText className="mx-auto h-12 w-12 text-[var(--muted)]" />
+                  <p className="mt-4 text-[var(--muted)]">
+                    {tousLesDocuments.length === 0 ? 'Aucun document' : 'Aucun document ne correspond au filtre'}
                   </p>
                 </div>
               );

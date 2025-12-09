@@ -24,6 +24,7 @@ export async function GET(request: NextRequest, context: RouteContext) {
         id: true,
         nom: true,
         emailPrincipal: true,
+        logoClientUrl: true,
         proprietaire: {
           select: {
             nomAffiche: true,

@@ -13,6 +13,7 @@ export const clientCreationSchema = z.object({
   // Informations entreprise / organisation
   raisonSociale: z.string().optional(),
   siteWeb: z.string().optional(),
+  logoClientUrl: z.string().optional(),
   adresseLigne1: z.string().optional(),
   adresseLigne2: z.string().optional(),
   codePostal: z.string().optional(),

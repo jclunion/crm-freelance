@@ -30,6 +30,7 @@ export interface ClientAvecStats {
   // Informations entreprise / organisation
   raisonSociale: string | null;
   siteWeb: string | null;
+  logoClientUrl: string | null;
   adresseLigne1: string | null;
   adresseLigne2: string | null;
   codePostal: string | null;
@@ -73,6 +74,7 @@ export interface ClientCreation {
   // Informations entreprise / organisation
   raisonSociale?: string;
   siteWeb?: string;
+  logoClientUrl?: string;
   adresseLigne1?: string;
   adresseLigne2?: string;
   codePostal?: string;

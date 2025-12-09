@@ -27,6 +27,7 @@ export function ModaleEditionClient({
   // Informations entreprise / organisation
   const [raisonSociale, setRaisonSociale] = useState(client.raisonSociale || '');
   const [siteWeb, setSiteWeb] = useState(client.siteWeb || '');
+  const [logoClientUrl, setLogoClientUrl] = useState(client.logoClientUrl || '');
   const [adresseLigne1, setAdresseLigne1] = useState(client.adresseLigne1 || '');
   const [adresseLigne2, setAdresseLigne2] = useState(client.adresseLigne2 || '');
   const [codePostal, setCodePostal] = useState(client.codePostal || '');
@@ -50,6 +51,7 @@ export function ModaleEditionClient({
     setNoteInterne(client.noteInterne || '');
     setRaisonSociale(client.raisonSociale || '');
     setSiteWeb(client.siteWeb || '');
+    setLogoClientUrl(client.logoClientUrl || '');
     setAdresseLigne1(client.adresseLigne1 || '');
     setAdresseLigne2(client.adresseLigne2 || '');
     setCodePostal(client.codePostal || '');
@@ -78,6 +80,7 @@ export function ModaleEditionClient({
           // Informations entreprise / organisation
           raisonSociale: raisonSociale || undefined,
           siteWeb: siteWeb || undefined,
+          logoClientUrl: logoClientUrl || undefined,
           adresseLigne1: adresseLigne1 || undefined,
           adresseLigne2: adresseLigne2 || undefined,
           codePostal: codePostal || undefined,
@@ -195,6 +198,68 @@ export function ModaleEditionClient({
                 className="w-full rounded-lg border border-[var(--border)] bg-[var(--background)] px-3 py-2 text-sm focus:border-[var(--primary)] focus:outline-none"
               />
             </div>
+
+{/* Logo entreprise */}
+<div className="flex items-center justify-between gap-3 rounded-lg bg-[var(--card)] px-3 py-2">
+  <div className="flex items-center gap-3">
+    {logoClientUrl ? (
+      <img
+        src={logoClientUrl}
+        alt={nom}
+        className="h-[72px] max-w-[200px] rounded border border-[var(--border)] object-contain bg-[var(--background)]"
+      />
+    ) : (
+      <div className="flex h-[72px] max-w-[200px] items-center justify-center rounded border border-dashed border-[var(--border)] text-[var(--muted)] text-xs">
+        Logo
+      </div>
+    )}
+    <div className="text-xs text-[var(--muted)]">
+      Logo de l’entreprise cliente (affiché aussi sur le portail).
+    </div>
+  </div>
+  <div className="flex flex-col items-end gap-1">
+    <label className="cursor-pointer text-xs font-medium text-[var(--primary)] hover:underline">
+      Changer le logo
+      <input
+        type="file"
+        accept="image/png,image/jpeg,image/webp,image/gif"
+        className="hidden"
+        onChange={async (e) => {
+          const fichier = e.target.files?.[0];
+          if (!fichier) return;
+
+          const formData = new FormData();
+          formData.append('file', fichier);
+
+          try {
+            const reponse = await fetch('/api/upload', {
+              method: 'POST',
+              body: formData,
+            });
+            if (!reponse.ok) {
+              alert('Erreur lors de l’upload du logo');
+              return;
+            }
+            const data = await reponse.json();
+            setLogoClientUrl(data.url || '');
+          } catch (err) {
+            console.error('Erreur upload logo client', err);
+            alert('Erreur lors de l’upload du logo');
+          }
+        }}
+      />
+    </label>
+    {logoClientUrl && (
+      <button
+        type="button"
+        onClick={() => setLogoClientUrl('')}
+        className="text-[10px] text-[var(--muted)] hover:underline"
+      >
+        Retirer le logo
+      </button>
+    )}
+  </div>
+</div>
 
             {/* Informations entreprise / organisation */}
             <div className="mt-4 space-y-3 rounded-lg border border-dashed border-[var(--border)] p-3">

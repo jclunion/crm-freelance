@@ -92,6 +92,7 @@ model Client {
   // Informations entreprise / organisation
   raisonSociale      String?
   siteWeb            String?
+  logoClientUrl      String?  // Logo spécifique de l'entreprise cliente (portail + fiche client)
   adresseLigne1      String?
   adresseLigne2      String?
   codePostal         String?

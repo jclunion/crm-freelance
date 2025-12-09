@@ -69,6 +69,7 @@ export async function POST(request: NextRequest) {
       data: {
         ...donnees,
         emailPrincipal: donnees.emailPrincipal || null,
+        logoClientUrl: donnees.logoClientUrl || null,
         proprietaireId: session.user.id,
       },
     });
