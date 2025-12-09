@@ -1,8 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/auth';
-import { writeFile, mkdir } from 'fs/promises';
-import { existsSync } from 'fs';
-import path from 'path';
+import { uploadToCloudinary } from '@/lib/cloudinary';
 
 // Taille max : 10 Mo
 const MAX_FILE_SIZE = 10 * 1024 * 1024;
@@ -22,7 +20,7 @@ const ALLOWED_MIME_TYPES = [
 
 /**
  * POST /api/upload
- * Upload un fichier et retourne son URL
+ * Upload un fichier vers Cloudinary et retourne son URL publique
  */
 export async function POST(request: NextRequest) {
   try {
@@ -54,38 +52,39 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Créer le dossier uploads s'il n'existe pas
-    const uploadsDir = path.join(process.cwd(), 'public', 'uploads', session.user.id);
-    if (!existsSync(uploadsDir)) {
-      await mkdir(uploadsDir, { recursive: true });
-    }
+    // Convertir le fichier en buffer
+    const bytes = await file.arrayBuffer();
+    const buffer = Buffer.from(bytes);
+
+    // Déterminer le type de ressource pour Cloudinary
+    const isImage = file.type.startsWith('image/');
+    const resourceType = isImage ? 'image' : 'raw';
 
     // Générer un nom de fichier unique
     const timestamp = Date.now();
-    const extension = path.extname(file.name);
+    const extension = file.name.split('.').pop() || '';
     const nomFichierSecurise = file.name
-      .replace(extension, '')
+      .replace(`.${extension}`, '')
       .replace(/[^a-zA-Z0-9-_]/g, '_')
       .substring(0, 50);
-    const nomFichier = `${timestamp}-${nomFichierSecurise}${extension}`;
-    const cheminFichier = path.join(uploadsDir, nomFichier);
+    const publicId = `${session.user.id}/${timestamp}-${nomFichierSecurise}`;
 
-    // Écrire le fichier
-    const bytes = await file.arrayBuffer();
-    const buffer = Buffer.from(bytes);
-    await writeFile(cheminFichier, buffer);
-
-    // URL publique
-    const urlFichier = `/uploads/${session.user.id}/${nomFichier}`;
+    // Upload vers Cloudinary
+    const result = await uploadToCloudinary(buffer, {
+      folder: 'crm-freelance',
+      public_id: publicId,
+      resource_type: resourceType,
+    });
 
     return NextResponse.json({
-      url: urlFichier,
+      url: result.url,
+      publicId: result.public_id,
       nom: file.name,
       taille: file.size,
       mimeType: file.type,
     });
   } catch (error) {
-    console.error('Erreur upload:', error);
+    console.error('Erreur upload Cloudinary:', error);
     return NextResponse.json({ error: 'Erreur lors de l\'upload' }, { status: 500 });
   }
 }

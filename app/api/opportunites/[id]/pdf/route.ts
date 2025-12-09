@@ -77,30 +77,28 @@ export async function GET(request: NextRequest, context: RouteContext) {
     const numeroDocument = `${prefixe}-${annee}-${String(nouveauCompteur).padStart(4, '0')}`;
 
     // Préparer les données pour le PDF
-    // Récupérer le logo en base64 via fetch HTTP (compatible Vercel serverless)
+    // Le logo est maintenant une URL Cloudinary publique, on peut l'utiliser directement
+    // ou le convertir en base64 pour une meilleure compatibilité avec react-pdf
     let logoUrlAbsolu: string | null = null;
     if (opportunite.proprietaire.logoUrl) {
       try {
-        let logoUrl = opportunite.proprietaire.logoUrl;
+        const logoUrl = opportunite.proprietaire.logoUrl;
+        console.log('Logo URL:', logoUrl);
         
-        // Construire l'URL complète si c'est un chemin relatif
-        if (logoUrl.startsWith('/')) {
-          // En production, utiliser l'URL de l'application
-          const baseUrl = process.env.NEXTAUTH_URL || request.nextUrl.origin;
-          logoUrl = `${baseUrl}${logoUrl}`;
-        }
-        
-        console.log('Fetching logo from:', logoUrl);
-        
-        // Fetch le logo et le convertir en base64
-        const logoResponse = await fetch(logoUrl);
-        if (logoResponse.ok) {
-          const logoBuffer = await logoResponse.arrayBuffer();
-          const contentType = logoResponse.headers.get('content-type') || 'image/png';
-          logoUrlAbsolu = `data:${contentType};base64,${Buffer.from(logoBuffer).toString('base64')}`;
-          console.log('Logo converti en base64 avec succès');
+        // Si c'est une URL publique (Cloudinary, etc.), fetch et convertir en base64
+        if (logoUrl.startsWith('http')) {
+          const logoResponse = await fetch(logoUrl);
+          if (logoResponse.ok) {
+            const logoBuffer = await logoResponse.arrayBuffer();
+            const contentType = logoResponse.headers.get('content-type') || 'image/png';
+            logoUrlAbsolu = `data:${contentType};base64,${Buffer.from(logoBuffer).toString('base64')}`;
+            console.log('Logo converti en base64 avec succès');
+          } else {
+            console.log('Logo non trouvé:', logoResponse.status);
+          }
         } else {
-          console.log('Logo non trouvé:', logoResponse.status);
+          // Ancien format (chemin relatif) - ne devrait plus arriver avec Cloudinary
+          console.log('Logo avec chemin relatif ignoré (migration vers Cloudinary nécessaire)');
         }
       } catch (e) {
         console.error('Erreur récupération logo:', e);
