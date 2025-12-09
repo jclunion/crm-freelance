@@ -76,16 +76,18 @@ crm/
 │   ├── (dashboard)/              # Routes authentifiées avec sidebar
 │   │   ├── clients/              # Liste + fiche client [id]
 │   │   ├── opportunites/         # Pipeline Kanban
+│   │   ├── parametres/           # Paramètres utilisateur (infos entreprise, TVA)
 │   │   └── tickets/              # Liste + fiche ticket [id]
 │   ├── api/                      # Routes API
 │   │   ├── auth/                 # NextAuth + inscription
 │   │   ├── clients/              # CRUD clients + portail + emails
 │   │   ├── contacts/             # CRUD contacts
-│   │   ├── opportunites/         # CRUD opportunités
+│   │   ├── opportunites/         # CRUD opportunités + génération PDF
 │   │   ├── paiements/            # Sessions Stripe
 │   │   ├── portail/              # API portail client (public)
 │   │   ├── documents/            # CRUD documents liés aux opportunités
 │   │   ├── upload/               # Upload de fichiers (documents projets)
+│   │   ├── utilisateur/          # Infos entreprise du freelance (paramètres)
 │   │   ├── tickets/              # CRUD tickets
 │   │   └── webhooks/             # Webhooks Stripe
 │   ├── auth/                     # Pages authentification
@@ -109,6 +111,8 @@ crm/
 │   ├── hooks.ts                  # Hooks React Query
 │   ├── integrations/             # Intégrations tierces
 │   │   └── stripe.ts             # Configuration Stripe
+│   ├── pdf/                      # Génération PDF
+│   │   └── DocumentPDF.tsx       # Composant React-PDF (devis/factures)
 │   ├── portail.ts                # Utilitaires portail client
 │   ├── prisma.ts                 # Client Prisma
 │   ├── utils.ts                  # Helpers (dates, montants)
@@ -158,6 +162,23 @@ crm/
 - ✅ Association des documents aux opportunités (modèle `Document`)
 - ✅ Gestion des documents dans le dashboard (composant `GestionDocuments`)
 - ✅ Contrôle de la visibilité sur le portail client (`visiblePortail`)
+
+### Génération de devis et factures PDF
+- ✅ **Devis PDF** générés depuis la modale opportunité
+- ✅ **Factures PDF** générées uniquement si opportunité gagnée ET payée
+- ✅ **Numérotation automatique** (DEV-2025-0001, FAC-2025-0001)
+- ✅ **Logo entreprise** affiché en en-tête
+- ✅ **Gestion TVA** : franchise (mention légale) ou assujetti (HT + TVA + TTC)
+- ✅ **Tampon "PAYÉ"** sur les factures acquittées
+- ✅ Sauvegarde automatique dans les documents de l'opportunité
+- ✅ Design minimaliste sans bordures
+
+### Paramètres utilisateur
+- ✅ Informations entreprise (raison sociale, adresse, SIRET, TVA intra)
+- ✅ Logo entreprise pour les PDF et le portail
+- ✅ Coordonnées bancaires (IBAN, BIC) pour les factures
+- ✅ Régime TVA (franchise ou assujetti avec taux configurable)
+- ✅ Mentions légales personnalisées
 
 ### Portail client
 - ✅ Header avec nom et logo du freelance / de l’agence (`logoUrl`)
@@ -263,6 +284,46 @@ async function creerDocument(opportuniteId: string, fichierUrl: string) {
 
   return response.json();
 }
+```
+
+### Génération de PDF (devis/factures)
+
+Générer un devis PDF :
+
+```ts
+// Le PDF est téléchargé et sauvegardé automatiquement dans les documents
+window.open(`/api/opportunites/${opportuniteId}/pdf?type=devis`, '_blank');
+```
+
+Générer une facture PDF (uniquement si opportunité gagnée ET payée) :
+
+```ts
+window.open(`/api/opportunites/${opportuniteId}/pdf?type=facture`, '_blank');
+```
+
+### Paramètres utilisateur
+
+Récupérer les infos entreprise :
+
+```ts
+const response = await fetch('/api/utilisateur', { credentials: 'include' });
+const user = await response.json();
+// user.raisonSociale, user.siret, user.tauxTva, etc.
+```
+
+Mettre à jour les infos entreprise :
+
+```ts
+await fetch('/api/utilisateur', {
+  method: 'PATCH',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({
+    raisonSociale: 'Ma Société SAS',
+    tauxTva: 20, // 0 = franchise de TVA
+    // ... autres champs
+  }),
+  credentials: 'include',
+});
 ```
 
 ## Scripts disponibles

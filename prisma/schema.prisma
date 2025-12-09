@@ -66,6 +66,27 @@ model User {
   fuseauHoraire   String    @default("Europe/Paris")
   langueInterface String    @default("fr")
 
+  // Informations entreprise (émetteur des devis/factures)
+  raisonSociale   String?
+  adresseLigne1   String?
+  adresseLigne2   String?
+  codePostal      String?
+  ville           String?
+  pays            String?   @default("France")
+  siret           String?
+  numeroTva       String?
+  telephone       String?
+  iban            String?
+  bic             String?
+  mentionsLegales String?   // Mentions légales personnalisées pour les documents
+
+  // TVA : 0 = franchise (micro-entrepreneur), > 0 = taux applicable (ex: 20)
+  tauxTva         Float     @default(0)
+
+  // Compteurs pour numérotation automatique
+  compteurDevis   Int       @default(0)
+  compteurFacture Int       @default(0)
+
   accounts        Account[]
   sessions        Session[]
   clients         Client[]

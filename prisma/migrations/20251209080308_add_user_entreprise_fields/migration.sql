@@ -1,0 +1,15 @@
+-- AlterTable
+ALTER TABLE "users" ADD COLUMN     "adresseLigne1" TEXT,
+ADD COLUMN     "adresseLigne2" TEXT,
+ADD COLUMN     "bic" TEXT,
+ADD COLUMN     "codePostal" TEXT,
+ADD COLUMN     "compteurDevis" INTEGER NOT NULL DEFAULT 0,
+ADD COLUMN     "compteurFacture" INTEGER NOT NULL DEFAULT 0,
+ADD COLUMN     "iban" TEXT,
+ADD COLUMN     "mentionsLegales" TEXT,
+ADD COLUMN     "numeroTva" TEXT,
+ADD COLUMN     "pays" TEXT DEFAULT 'France',
+ADD COLUMN     "raisonSociale" TEXT,
+ADD COLUMN     "siret" TEXT,
+ADD COLUMN     "telephone" TEXT,
+ADD COLUMN     "ville" TEXT;

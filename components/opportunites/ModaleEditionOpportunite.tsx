@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { X, Loader2, Trash2, CreditCard, ExternalLink, Copy, Check } from 'lucide-react';
+import { X, Loader2, Trash2, CreditCard, ExternalLink, Copy, Check, FileText, Download } from 'lucide-react';
 import { useMettreAJourOpportunite, useSupprimerOpportunite, useOpportunites } from '@/lib/hooks';
 import { recupererClients, genererLienPaiement, type ClientAvecStats, type Opportunite } from '@/lib/api';
 import { useToast } from '@/components/ui/Toast';
@@ -337,6 +337,51 @@ export function ModaleEditionOpportunite({
                 )}
               </div>
             )}
+
+            {/* Section Génération PDF */}
+            <div className="rounded-lg border border-[var(--border)] bg-[var(--card)] p-4">
+              <div className="flex items-center gap-2 mb-3">
+                <FileText className="h-5 w-5 text-[var(--muted)]" />
+                <span className="font-medium">Générer un document</span>
+              </div>
+              <div className="flex gap-2">
+                <a
+                  href={`/api/opportunites/${opportunite.id}/pdf?type=devis`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-2 rounded-lg border border-[var(--border)] px-3 py-2 text-sm font-medium transition-colors hover:bg-[var(--border)]"
+                >
+                  <Download className="h-4 w-4" />
+                  Devis PDF
+                </a>
+                {/* Facture disponible uniquement si gagné ET payé */}
+                {opportunite.etapePipeline === 'gagne' && opportunite.statutPaiement === 'paye' ? (
+                  <a
+                    href={`/api/opportunites/${opportunite.id}/pdf?type=facture`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-2 rounded-lg border border-[var(--border)] px-3 py-2 text-sm font-medium transition-colors hover:bg-[var(--border)]"
+                  >
+                    <Download className="h-4 w-4" />
+                    Facture PDF
+                  </a>
+                ) : (
+                  <span
+                    className="flex items-center gap-2 rounded-lg border border-[var(--border)] px-3 py-2 text-sm font-medium text-[var(--muted)] cursor-not-allowed opacity-50"
+                    title="La facture est disponible uniquement pour les opportunités gagnées et payées"
+                  >
+                    <Download className="h-4 w-4" />
+                    Facture PDF
+                  </span>
+                )}
+              </div>
+              <p className="mt-2 text-xs text-[var(--muted)]">
+                Les documents générés sont automatiquement sauvegardés dans les documents de l'opportunité.
+                {opportunite.etapePipeline !== 'gagne' || opportunite.statutPaiement !== 'paye' ? (
+                  <span className="block mt-1">La facture est disponible après paiement.</span>
+                ) : null}
+              </p>
+            </div>
 
             {/* Section Documents */}
             <GestionDocuments key={opportunite.id} opportuniteId={opportunite.id} />
