@@ -146,9 +146,9 @@ export function ModaleEditionOpportunite({
       <div className="modal-overlay absolute inset-0 bg-black/50" onClick={onFermer} />
 
       {/* Modale */}
-      <div className="modal-content relative z-10 w-full max-w-lg rounded-lg border border-[var(--border)] bg-[var(--background)] shadow-xl">
+      <div className="modal-content relative z-10 flex max-h-[90vh] w-full max-w-lg flex-col rounded-lg border border-[var(--border)] bg-[var(--background)] shadow-xl">
         {/* Header */}
-        <div className="flex items-center justify-between border-b border-[var(--border)] px-6 py-4">
+        <div className="flex flex-shrink-0 items-center justify-between border-b border-[var(--border)] px-6 py-4">
           <h2 className="text-lg font-semibold">Modifier l'opportunité</h2>
           <button
             onClick={onFermer}
@@ -158,8 +158,8 @@ export function ModaleEditionOpportunite({
           </button>
         </div>
 
-        {/* Formulaire */}
-        <form onSubmit={gererSoumission} className="p-6">
+        {/* Formulaire avec scroll */}
+        <form onSubmit={gererSoumission} className="flex-1 overflow-y-auto p-6">
           <div className="space-y-4">
             {/* Client (non modifiable) */}
             <div>

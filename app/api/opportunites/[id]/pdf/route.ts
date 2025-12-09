@@ -4,8 +4,6 @@ import { prisma } from '@/lib/prisma';
 import { renderToBuffer } from '@react-pdf/renderer';
 import { DocumentPDF, DonneesEmetteur, DonneesDestinataire, DonneesOpportunite } from '@/lib/pdf/DocumentPDF';
 import React from 'react';
-import { writeFile, mkdir } from 'fs/promises';
-import path from 'path';
 
 interface RouteContext {
   params: Promise<{ id: string }>;
@@ -79,54 +77,35 @@ export async function GET(request: NextRequest, context: RouteContext) {
     const numeroDocument = `${prefixe}-${annee}-${String(nouveauCompteur).padStart(4, '0')}`;
 
     // Préparer les données pour le PDF
-    // Construire le chemin absolu du logo si disponible (fichier local)
+    // Récupérer le logo en base64 via fetch HTTP (compatible Vercel serverless)
     let logoUrlAbsolu: string | null = null;
     if (opportunite.proprietaire.logoUrl) {
-      let cheminRelatif = opportunite.proprietaire.logoUrl;
-      console.log('Logo URL original:', cheminRelatif);
-      
-      // Si c'est une URL localhost, extraire le chemin relatif
-      if (cheminRelatif.includes('localhost') || cheminRelatif.includes('127.0.0.1')) {
-        try {
-          const url = new URL(cheminRelatif);
-          cheminRelatif = url.pathname; // Ex: /uploads/xxx/logo.jpg
-          console.log('Chemin extrait:', cheminRelatif);
-        } catch (e) {
-          console.error('Erreur parsing URL:', e);
-        }
-      }
-      
-      // Si c'est une URL externe (non localhost), on ne peut pas l'utiliser facilement
-      if (cheminRelatif.startsWith('http')) {
-        // URL externe non supportée pour le moment
-        console.log('URL externe ignorée');
-        logoUrlAbsolu = null;
-      } else {
-        // Chemin relatif, convertir en chemin absolu du fichier
-        const logoPath = path.join(process.cwd(), 'public', cheminRelatif);
-        console.log('Chemin absolu du logo:', logoPath);
+      try {
+        let logoUrl = opportunite.proprietaire.logoUrl;
         
-        // Vérifier si le fichier existe et le convertir en base64
-        const fs = require('fs');
-        if (fs.existsSync(logoPath)) {
-          console.log('Fichier logo trouvé, conversion en base64...');
-          try {
-            const logoBuffer = fs.readFileSync(logoPath);
-            const extension = path.extname(logoPath).toLowerCase().slice(1);
-            const mimeType = extension === 'jpg' ? 'jpeg' : extension;
-            logoUrlAbsolu = `data:image/${mimeType};base64,${logoBuffer.toString('base64')}`;
-            console.log('Logo converti en base64 avec succès');
-          } catch (e) {
-            console.error('Erreur lecture logo:', e);
-            logoUrlAbsolu = null;
-          }
-        } else {
-          console.log('Fichier logo NON trouvé !');
-          logoUrlAbsolu = null;
+        // Construire l'URL complète si c'est un chemin relatif
+        if (logoUrl.startsWith('/')) {
+          // En production, utiliser l'URL de l'application
+          const baseUrl = process.env.NEXTAUTH_URL || request.nextUrl.origin;
+          logoUrl = `${baseUrl}${logoUrl}`;
         }
+        
+        console.log('Fetching logo from:', logoUrl);
+        
+        // Fetch le logo et le convertir en base64
+        const logoResponse = await fetch(logoUrl);
+        if (logoResponse.ok) {
+          const logoBuffer = await logoResponse.arrayBuffer();
+          const contentType = logoResponse.headers.get('content-type') || 'image/png';
+          logoUrlAbsolu = `data:${contentType};base64,${Buffer.from(logoBuffer).toString('base64')}`;
+          console.log('Logo converti en base64 avec succès');
+        } else {
+          console.log('Logo non trouvé:', logoResponse.status);
+        }
+      } catch (e) {
+        console.error('Erreur récupération logo:', e);
+        logoUrlAbsolu = null;
       }
-    } else {
-      console.log('Pas de logo configuré pour cet utilisateur');
     }
 
     const emetteur: DonneesEmetteur = {
@@ -190,28 +169,8 @@ export async function GET(request: NextRequest, context: RouteContext) {
     // Nom du fichier
     const nomFichier = `${typeDocument}_${numeroDocument}_${opportunite.client.nom.replace(/\s+/g, '_')}.pdf`;
 
-    // Sauvegarder le PDF dans le dossier uploads
-    const uploadsDir = path.join(process.cwd(), 'public', 'uploads', session.user.id);
-    await mkdir(uploadsDir, { recursive: true });
-    
-    const cheminFichier = path.join(uploadsDir, nomFichier);
-    await writeFile(cheminFichier, Buffer.from(pdfBuffer));
-    
-    const fichierUrl = `/uploads/${session.user.id}/${nomFichier}`;
-
-    // Créer le document dans la base de données
-    await prisma.document.create({
-      data: {
-        opportuniteId: opportunite.id,
-        proprietaireId: session.user.id,
-        nom: `${typeDocument === 'devis' ? 'Devis' : 'Facture'} ${numeroDocument}`,
-        typeDocument: typeDocument,
-        fichierUrl,
-        tailleFichier: pdfBuffer.byteLength,
-        mimeType: 'application/pdf',
-        visiblePortail: true,
-      },
-    });
+    // Note: En production (Vercel serverless), on ne peut pas sauvegarder sur le disque
+    // Le PDF est généré à la volée et retourné directement
 
     // Retourner le PDF
     return new NextResponse(Buffer.from(pdfBuffer), {
