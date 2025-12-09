@@ -1,6 +1,6 @@
 # Manuel Utilisateur - CRM Freelance
 
-**Version 1.0 - Décembre 2024**
+**Version 1.0 - Décembre 2025**
 
 ---
 
@@ -405,4 +405,4 @@ Pour toute question ou problème, contactez le support technique.
 
 ---
 
-*Document généré le 9 décembre 2024*
+*Document généré le 9 décembre 2025*

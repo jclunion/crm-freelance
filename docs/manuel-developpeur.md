@@ -1,6 +1,6 @@
 # Manuel Développeur - CRM Freelance
 
-**Version 1.0 - Décembre 2024**
+**Version 1.0 - Décembre 2025**
 
 ---
 
@@ -848,4 +848,4 @@ npm run test:coverage
 
 ---
 
-*Document généré le 9 décembre 2024*
+*Document généré le 9 décembre 2025*
