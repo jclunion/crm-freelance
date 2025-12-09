@@ -214,12 +214,12 @@ export async function GET(request: NextRequest, context: RouteContext) {
     });
 
     // Retourner le PDF
-return new NextResponse(pdfBuffer.buffer, {
-  headers: {
-    'Content-Type': 'application/pdf',
-    'Content-Disposition': `attachment; filename="${nomFichier}"`,
-  },
-});
+    return new NextResponse(Buffer.from(pdfBuffer), {
+      headers: {
+        'Content-Type': 'application/pdf',
+        'Content-Disposition': `attachment; filename="${nomFichier}"`,
+      },
+    });
   } catch (error) {
     console.error('Erreur génération PDF:', error);
     return NextResponse.json({ error: 'Erreur lors de la génération du PDF' }, { status: 500 });
