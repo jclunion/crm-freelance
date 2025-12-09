@@ -158,7 +158,8 @@ crm/
 - ✅ **Documents liés aux opportunités** (contrats, devis, factures, autres)
 
 ### Gestion des documents
-- ✅ Upload de fichiers locaux (PDF, Word, Excel, images) via `/api/upload`
+- ✅ Upload de fichiers via Cloudinary (PDF, Word, Excel, images)
+- ✅ Support URL directe pour les logos (Cloudinary, Imgur, etc.)
 - ✅ Association des documents aux opportunités (modèle `Document`)
 - ✅ Gestion des documents dans le dashboard (composant `GestionDocuments`)
 - ✅ Contrôle de la visibilité sur le portail client (`visiblePortail`)
@@ -170,12 +171,12 @@ crm/
 - ✅ **Logo entreprise** affiché en en-tête
 - ✅ **Gestion TVA** : franchise (mention légale) ou assujetti (HT + TVA + TTC)
 - ✅ **Tampon "PAYÉ"** sur les factures acquittées
-- ✅ Sauvegarde automatique dans les documents de l'opportunité
 - ✅ Design minimaliste sans bordures
+- ✅ Compatible Vercel serverless (génération à la volée)
 
 ### Paramètres utilisateur
 - ✅ Informations entreprise (raison sociale, adresse, SIRET, TVA intra)
-- ✅ Logo entreprise pour les PDF et le portail
+- ✅ Logo entreprise pour les PDF et le portail (URL externe ou upload)
 - ✅ Coordonnées bancaires (IBAN, BIC) pour les factures
 - ✅ Régime TVA (franchise ou assujetti avec taux configurable)
 - ✅ Mentions légales personnalisées

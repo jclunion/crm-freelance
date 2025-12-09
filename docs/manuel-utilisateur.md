@@ -204,8 +204,7 @@ Avant de générer des documents, configurez vos informations dans **Paramètres
 
 1. Ouvrez une opportunité
 2. Dans la section **"Génération PDF"**, cliquez sur **"Devis PDF"**
-3. Le PDF s'ouvre dans un nouvel onglet
-4. Le devis est automatiquement sauvegardé dans les documents de l'opportunité
+3. Le PDF est généré et téléchargé automatiquement
 
 #### Contenu du devis
 
@@ -353,9 +352,12 @@ Le client peut :
 
 ### Logo entreprise
 
-1. Cliquez sur **"Choisir un fichier"**
-2. Sélectionnez votre logo (PNG, JPG recommandé)
-3. Le logo apparaîtra sur vos devis, factures et le portail client
+Deux options pour ajouter votre logo :
+
+1. **Upload** : Cliquez sur "Choisir un fichier" et sélectionnez votre logo
+2. **URL directe** : Collez une URL Cloudinary, Imgur ou autre service d'hébergement
+
+Le logo apparaîtra sur vos devis, factures et le portail client.
 
 ### Adresse
 
