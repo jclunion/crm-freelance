@@ -177,38 +177,55 @@ export default function PageParametres() {
 
           <div className="space-y-4">
             {/* Logo */}
-            <div className="flex items-center gap-4">
-              {logoUrl ? (
-                <img
-                  src={logoUrl}
-                  alt="Logo"
-                  className="h-16 w-16 rounded-lg border border-[var(--border)] object-contain"
-                />
-              ) : (
-                <div className="flex h-16 w-16 items-center justify-center rounded-lg border border-dashed border-[var(--border)] text-[var(--muted)]">
-                  <Building2 className="h-6 w-6" />
-                </div>
-              )}
-              <div>
-                <label className="cursor-pointer text-sm font-medium text-[var(--primary)] hover:underline">
-                  {logoUrl ? 'Changer le logo' : 'Ajouter un logo'}
-                  <input
-                    type="file"
-                    accept="image/png,image/jpeg,image/webp"
-                    className="hidden"
-                    onChange={gererUploadLogo}
+            <div className="space-y-3">
+              <div className="flex items-center gap-4">
+                {logoUrl ? (
+                  <img
+                    src={logoUrl}
+                    alt="Logo"
+                    className="h-16 w-16 rounded-lg border border-[var(--border)] object-contain"
                   />
-                </label>
-                {logoUrl && (
-                  <button
-                    type="button"
-                    onClick={() => setLogoUrl('')}
-                    className="ml-3 text-sm text-[var(--muted)] hover:underline"
-                  >
-                    Retirer
-                  </button>
+                ) : (
+                  <div className="flex h-16 w-16 items-center justify-center rounded-lg border border-dashed border-[var(--border)] text-[var(--muted)]">
+                    <Building2 className="h-6 w-6" />
+                  </div>
                 )}
-                <p className="text-xs text-[var(--muted)]">PNG, JPG ou WebP. Max 2 Mo.</p>
+                <div>
+                  <label className="cursor-pointer text-sm font-medium text-[var(--primary)] hover:underline">
+                    {logoUrl ? 'Changer le logo' : 'Ajouter un logo'}
+                    <input
+                      type="file"
+                      accept="image/png,image/jpeg,image/webp"
+                      className="hidden"
+                      onChange={gererUploadLogo}
+                    />
+                  </label>
+                  {logoUrl && (
+                    <button
+                      type="button"
+                      onClick={() => setLogoUrl('')}
+                      className="ml-3 text-sm text-[var(--muted)] hover:underline"
+                    >
+                      Retirer
+                    </button>
+                  )}
+                  <p className="text-xs text-[var(--muted)]">PNG, JPG ou WebP. Max 2 Mo.</p>
+                </div>
+              </div>
+              
+              {/* URL directe du logo */}
+              <div>
+                <label className="mb-1 block text-sm font-medium">Ou saisir l'URL du logo</label>
+                <input
+                  type="url"
+                  value={logoUrl}
+                  onChange={(e) => setLogoUrl(e.target.value)}
+                  className="w-full rounded-lg border border-[var(--border)] bg-[var(--background)] px-3 py-2 text-sm"
+                  placeholder="https://res.cloudinary.com/..."
+                />
+                <p className="mt-1 text-xs text-[var(--muted)]">
+                  Vous pouvez coller directement une URL Cloudinary, Imgur, etc.
+                </p>
               </div>
             </div>
 
